@@ -1,0 +1,25 @@
+# Environment
+.env
+
+# Backend
+backend/node_modules/
+backend/dist/
+backend/coverage/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# ML
+ml/__pycache__/
+ml/*.egg-info/
+ml/.venv/
+ml/venv/
+ml/models/*.bin
+ml/models/*.pt
+ml/models/*.onnx
+
+# OS
+.DS_Store
+Thumbs.db
