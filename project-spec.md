@@ -1112,7 +1112,9 @@ time_weight = exp(-days_since_event / 365)
 ```json
 {
   "inn": "7701234567",
-  "password": "StrongPassword123!"
+  "password": "StrongPassword123!",
+  "location": "lol",
+  "organization_name":"lol",
 }
 ```
 
