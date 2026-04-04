@@ -19,6 +19,7 @@ ml/venv/
 ml/models/*.bin
 ml/models/*.pt
 ml/models/*.onnx
+ml/data/*.csv
 
 # OS
 .DS_Store

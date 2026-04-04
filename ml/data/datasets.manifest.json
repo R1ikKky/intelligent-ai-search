@@ -1,0 +1,138 @@
+{
+  "source_tz": "data/qwest.md",
+  "source_dataset_url": "https://disk.yandex.ru/d/ZrPvVooGg_WQGQ",
+  "encoding": "UTF-8 with BOM (utf-8-sig)",
+  "delimiter": ";",
+  "quote_char": "\"",
+  "files": [
+    {
+      "filename": "СТЕ_20260403.csv",
+      "entity": "СТЕ",
+      "role_in_tz": "Каталог стандартизированных типовых единиц: индексация поиска, семантика, синонимы, карточки товаров.",
+      "header_row_present": false,
+      "columns": [
+        {
+          "index": 0,
+          "name_tz": "Идентификатор СТЕ",
+          "name_machine": "ste_id",
+          "type": "string",
+          "use_in_search": "keyword, join key к Контракты.ste_id"
+        },
+        {
+          "index": 1,
+          "name_tz": "Наименование",
+          "name_machine": "name",
+          "type": "string",
+          "use_in_search": "BM25, эмбеддинги, автодополнение, опечатки"
+        },
+        {
+          "index": 2,
+          "name_tz": "Категория",
+          "name_machine": "category",
+          "type": "string",
+          "use_in_search": "фильтр, персонализация по предпочитаемым категориям"
+        },
+        {
+          "index": 3,
+          "name_tz": "Атрибуты",
+          "name_machine": "attributes",
+          "type": "string",
+          "note": "Внутри поля — пары «ключ:значение», разделённые точкой с запятой; парсить как структурированные признаки.",
+          "use_in_search": "расширение текста для индекса, фильтры по атрибутам"
+        }
+      ],
+      "tz_mapping_ok": true
+    },
+    {
+      "filename": "Контракты_20260403.csv",
+      "entity": "Контракты",
+      "role_in_tz": "История закупок: персонализация (заказчик + СТЕ), объяснение ранжирования, динамика выдачи.",
+      "header_row_present": false,
+      "columns": [
+        {
+          "index": 0,
+          "name_tz": "Наименование закупки",
+          "name_machine": "procurement_title",
+          "type": "string",
+          "use_in_search": "доп. текстовый контекст к СТЕ; обучение/расширение запросов локально"
+        },
+        {
+          "index": 1,
+          "name_tz": "Идентификатор контракта",
+          "name_machine": "contract_id",
+          "type": "string",
+          "use_in_search": "идентификатор события, дедупликация"
+        },
+        {
+          "index": 2,
+          "name_tz": "Идентификатор СТЕ",
+          "name_machine": "ste_id",
+          "type": "string",
+          "use_in_search": "JOIN на СТЕ.ste_id; ядро персонализации по закупкам"
+        },
+        {
+          "index": 3,
+          "name_tz": "Дата заключения контракта",
+          "name_machine": "contract_date",
+          "type": "datetime",
+          "use_in_search": "time-decay весов в профиле заказчика"
+        },
+        {
+          "index": 4,
+          "name_tz": "Стоимость контракта",
+          "name_machine": "contract_amount",
+          "type": "decimal",
+          "use_in_search": "опционально: важность закупки в профиле"
+        },
+        {
+          "index": 5,
+          "name_tz": "ИНН заказчика",
+          "name_machine": "customer_inn",
+          "type": "string",
+          "use_in_search": "идентификатор пользователя/заказчика для персонализации"
+        },
+        {
+          "index": 6,
+          "name_tz": "Наименование заказчика",
+          "name_machine": "customer_name",
+          "type": "string",
+          "use_in_search": "отображение, отладка"
+        },
+        {
+          "index": 7,
+          "name_tz": "Регион заказчика",
+          "name_machine": "customer_region",
+          "type": "string",
+          "use_in_search": "фильтр/сегментация"
+        },
+        {
+          "index": 8,
+          "name_tz": "ИНН поставщика",
+          "name_machine": "supplier_inn",
+          "type": "string",
+          "use_in_search": "аналитика, вторичные признаки"
+        },
+        {
+          "index": 9,
+          "name_tz": "Наименование поставщика",
+          "name_machine": "supplier_name",
+          "type": "string",
+          "use_in_search": "аналитика"
+        },
+        {
+          "index": 10,
+          "name_tz": "Регион поставщика",
+          "name_machine": "supplier_region",
+          "type": "string",
+          "use_in_search": "аналитика"
+        }
+      ],
+      "tz_mapping_ok": true
+    }
+  ],
+  "join": {
+    "left": "Контракты.ste_id",
+    "right": "СТЕ.ste_id",
+    "cardinality": "много контрактов на одну СТЕ"
+  }
+}
