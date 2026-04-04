@@ -6,10 +6,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, QueryFailedError } from 'typeorm';
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcrypt';
-import { Customer } from './entities/customer.entity';
+import { Customer, CustomerStatus } from './entities/customer.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -37,22 +37,24 @@ export class AuthService {
     req: Request,
     res: Response,
   ): Promise<TokenResponseDto> {
-    const existing = await this.customerRepo.findOne({
-      where: { login: dto.inn },
-    });
-    if (existing) {
-      throw new ConflictException('Учётная запись с таким ИНН уже существует');
+    try {
+      const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      const customer = await this.customerRepo.save(
+        this.customerRepo.create({
+          login: dto.inn,
+          passwordHash,
+          orgName: dto.orgName,
+          location: dto.location,
+          status: CustomerStatus.ACTIVE,
+        }),
+      );
+      return this.issueSession(customer, req, res);
+    } catch (err) {
+      if (err instanceof QueryFailedError && (err as any).code === '23505') {
+        throw new ConflictException('Учётная запись с таким ИНН уже существует');
+      }
+      throw err;
     }
-
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const customer = this.customerRepo.create({
-      login: dto.inn,
-      passwordHash,
-      status: 'active',
-    });
-    await this.customerRepo.save(customer);
-
-    return this.issueSession(customer, req, res);
   }
 
   async login(
@@ -66,7 +68,7 @@ export class AuthService {
     if (!customer) {
       throw new UnauthorizedException('Неверный ИНН или пароль');
     }
-    if (customer.status !== 'active') {
+    if (customer.status !== CustomerStatus.ACTIVE) {
       throw new UnauthorizedException('Учётная запись заблокирована');
     }
 
@@ -75,9 +77,11 @@ export class AuthService {
       throw new UnauthorizedException('Неверный ИНН или пароль');
     }
 
-    await this.customerRepo.update(customer.id, { lastLoginAt: new Date() });
-
-    return this.issueSession(customer, req, res);
+    const [tokenResponse] = await Promise.all([
+      this.issueSession(customer, req, res),
+      this.customerRepo.update(customer.id, { lastLoginAt: new Date() }),
+    ]);
+    return tokenResponse;
   }
 
   async refresh(req: Request, res: Response): Promise<{ accessToken: string }> {
@@ -95,20 +99,18 @@ export class AuthService {
         where: { token },
       });
       if (!stored || stored.expiresAt < new Date()) {
-        await qr.rollbackTransaction();
         res.clearCookie(REFRESH_COOKIE);
         throw new UnauthorizedException('Refresh token недействителен или истёк');
       }
 
       await qr.manager.delete(RefreshToken, { id: stored.id });
 
-      const newRefresh = this.signRefresh(stored.customerId);
+      const newRefresh = this.signToken(stored.customerId, 'refresh');
       const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_MS);
       const newToken = qr.manager.create(RefreshToken, {
         token: newRefresh,
         customerId: stored.customerId,
-        userAgent: (req.headers['user-agent'] ?? '').slice(0, 200) || null,
-        ip: (req.ip ?? '').slice(0, 45) || null,
+        ...this.extractClientMeta(req),
         expiresAt,
       });
       await qr.manager.save(RefreshToken, newToken);
@@ -116,7 +118,7 @@ export class AuthService {
       await qr.commitTransaction();
 
       this.setRefreshCookie(res, newRefresh);
-      const accessToken = this.signAccess(stored.customerId);
+      const accessToken = this.signToken(stored.customerId, 'access');
       return { accessToken };
     } catch (err) {
       await qr.rollbackTransaction();
@@ -139,16 +141,15 @@ export class AuthService {
     req: Request,
     res: Response,
   ): Promise<TokenResponseDto> {
-    const accessToken = this.signAccess(customer.id);
-    const refreshToken = this.signRefresh(customer.id);
+    const accessToken = this.signToken(customer.id, 'access');
+    const refreshToken = this.signToken(customer.id, 'refresh');
     const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_MS);
 
     await this.refreshTokenRepo.save(
       this.refreshTokenRepo.create({
         token: refreshToken,
         customerId: customer.id,
-        userAgent: (req.headers['user-agent'] ?? '').slice(0, 200) || null,
-        ip: (req.ip ?? '').slice(0, 45) || null,
+        ...this.extractClientMeta(req),
         expiresAt,
       }),
     );
@@ -158,24 +159,21 @@ export class AuthService {
     return { accessToken, customerId: customer.id, login: customer.login };
   }
 
-  private signAccess(customerId: string): string {
+  private signToken(customerId: string, type: 'access' | 'refresh'): string {
     return this.jwtService.sign(
-      { sub: customerId, customerId },
+      { sub: customerId },
       {
-        secret: this.configService.get<string>('jwt.accessSecret'),
-        expiresIn: this.configService.get<string>('jwt.accessExpiresIn') ?? '15m',
+        secret: this.configService.get<string>(`jwt.${type}Secret`),
+        expiresIn: this.configService.get<string>(`jwt.${type}ExpiresIn`) ?? (type === 'access' ? '15m' : '30d'),
       },
     );
   }
 
-  private signRefresh(customerId: string): string {
-    return this.jwtService.sign(
-      { sub: customerId, customerId },
-      {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
-        expiresIn: this.configService.get<string>('jwt.refreshExpiresIn') ?? '30d',
-      },
-    );
+  private extractClientMeta(req: Request): { userAgent: string | null; ip: string | null } {
+    return {
+      userAgent: (req.headers['user-agent'] ?? '').slice(0, 200) || null,
+      ip: (req.ip ?? '').slice(0, 45) || null,
+    };
   }
 
   private setRefreshCookie(res: Response, token: string): void {

@@ -21,7 +21,7 @@ export class SuggestService {
     const { query, limit = 10 } = dto;
     const items: SuggestItemDto[] = [];
 
-    // 1. Prefix / completion suggestions from ES (spellfix always on)
+    // 1. Prefix / completion suggestions from ES
     const esResponse = await this.esClient.search({
       index: this.index,
       size: limit,
@@ -38,6 +38,7 @@ export class SuggestService {
     });
 
     const seen = new Set<string>();
+    const prefix = query.toLowerCase().slice(0, 4);
 
     for (const hit of esResponse.hits.hits) {
       const src = hit._source as { name: string } | undefined;
@@ -46,17 +47,15 @@ export class SuggestService {
       if (seen.has(text)) continue;
       seen.add(text);
 
-      const isTypo = !text.toLowerCase().startsWith(query.toLowerCase().substring(0, 4));
+      const isTypo = !text.toLowerCase().startsWith(prefix);
       items.push({ text, kind: isTypo ? 'spellfix' : 'popular' });
     }
 
-    // 2. Synonym expansion (always on)
+    // 2. Synonym expansion
     const synonymLines = this.synonymsService.getSynonymLines();
     for (const line of synonymLines) {
       const terms = line.split(',').map((t) => t.trim());
-      const matched = terms.find((t) =>
-        t.toLowerCase().includes(query.toLowerCase().slice(0, 4)),
-      );
+      const matched = terms.find((t) => t.toLowerCase().includes(prefix));
       if (!matched) continue;
       for (const alt of terms) {
         if (alt === matched || seen.has(alt)) continue;
@@ -67,6 +66,6 @@ export class SuggestService {
       if (items.length >= limit) break;
     }
 
-    return { normalized_query: query, items: items.slice(0, limit) };
+    return { normalized_query: query, items };
   }
 }

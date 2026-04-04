@@ -60,7 +60,7 @@ export class UserBehaviorController {
     @Body() dto: BulkEventsDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<{ accepted: number; queued_profile_recalc: boolean }> {
-    const userId = user.userId;
+    const userId = user.sub;
     const profileUpdateTargets = new Set<string>();
 
     for (const ev of dto.events) {
