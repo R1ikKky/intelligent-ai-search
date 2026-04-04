@@ -1,0 +1,28 @@
+﻿<app-section-card title="Search results" eyebrow="Search">
+  @if (response(); as data) {
+    <p class="meta">Query: {{ data.normalizedQuery }} | Total: {{ data.total }}</p>
+
+    @if (data.correctedQuery) {
+      <p class="meta">Correction: {{ data.correctedQuery }}</p>
+    }
+
+    <ul class="result-list">
+      @for (item of data.items; track item.id) {
+        <li class="result-card">
+          <button type="button" (click)="selectItem(item)">
+            <strong>{{ item.name }}</strong>
+            <span>{{ item.category }}</span>
+            @if (item.description) {
+              <small>{{ item.description }}</small>
+            }
+            <span>Score: {{ item.score }} | Personalized: {{ item.personalizedScore }}</span>
+          </button>
+        </li>
+      } @empty {
+        <li class="result-card is-empty">Nothing found for this query.</li>
+      }
+    </ul>
+  } @else {
+    <p class="meta">Search results will render here.</p>
+  }
+</app-section-card>

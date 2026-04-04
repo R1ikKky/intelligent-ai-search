@@ -1,0 +1,19 @@
+.search-box {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+}
+
+.search-box input,
+.search-box button {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  background: #fff;
+}
+
+.search-box button {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}

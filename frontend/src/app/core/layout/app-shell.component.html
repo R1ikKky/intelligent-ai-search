@@ -1,0 +1,187 @@
+<header class="pp-header">
+  <div class="pp-header__inner">
+
+    <!-- Logo -->
+    <a class="pp-logo" routerLink="/search">
+      <div class="pp-logo__icon">
+        <span class="pp-logo__box pp-logo__box--back"></span>
+        <span class="pp-logo__box pp-logo__box--front"></span>
+      </div>
+      <div class="pp-logo__text">
+        <span class="pp-logo__line1">ПОРТАЛ</span>
+        <span class="pp-logo__line2">ПОСТАВЩИКОВ</span>
+      </div>
+    </a>
+
+    <!-- Nav -->
+    <nav class="pp-nav">
+      <button class="pp-nav__item" type="button">
+        <svg class="pp-nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <line x1="3" y1="5" x2="17" y2="5"/>
+          <line x1="3" y1="10" x2="17" y2="10"/>
+          <line x1="3" y1="15" x2="17" y2="15"/>
+        </svg>
+        Меню
+      </button>
+
+      <button class="pp-nav__item" type="button">
+        <svg class="pp-nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M10 2a5 5 0 0 1 3.5 8.5L14 13H6l.5-2.5A5 5 0 0 1 10 2z"/>
+          <path d="M8 15h4M9 17h2" stroke-linecap="round"/>
+        </svg>
+        Центр поддержки
+      </button>
+
+      <button class="pp-nav__item" type="button">
+        <svg class="pp-nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 4h2l2.5 8h7L17 7H6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="9" cy="16.5" r="1.2" fill="currentColor" stroke="none"/>
+          <circle cx="14" cy="16.5" r="1.2" fill="currentColor" stroke="none"/>
+        </svg>
+        Корзина
+      </button>
+
+      <button class="pp-nav__item" type="button">
+        <svg class="pp-nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M10 2l8 16-8-4-8 4 8-16z" stroke-linejoin="round"/>
+        </svg>
+        Московская область
+      </button>
+    </nav>
+
+    <!-- Spacer -->
+    <div class="pp-header__spacer"></div>
+
+    <!-- Search bar (expanded) -->
+    @if (isSearchOpen()) {
+      <form class="pp-search-bar" [formGroup]="searchForm" (ngSubmit)="submitSearch()">
+        <input
+          id="header-search-input"
+          class="pp-search-bar__input"
+          type="text"
+          formControlName="query"
+          placeholder="Поиск по СТЕ, категории или атрибуту…"
+          (keydown.escape)="toggleSearch()"
+        />
+        <button class="pp-search-bar__btn" type="submit">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="8.5" cy="8.5" r="5.5"/>
+            <line x1="12.5" y1="12.5" x2="18" y2="18" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </form>
+    }
+
+    <!-- Actions -->
+    <div class="pp-actions">
+      <button class="pp-actions__icon-btn" type="button" (click)="toggleSearch()" [class.is-active]="isSearchOpen()">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="8.5" cy="8.5" r="5.5"/>
+          <line x1="12.5" y1="12.5" x2="18" y2="18" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <button class="pp-actions__icon-btn pp-actions__lang" type="button">
+        <span class="pp-flag">
+          <span class="pp-flag__stripe pp-flag__stripe--white"></span>
+          <span class="pp-flag__stripe pp-flag__stripe--blue"></span>
+          <span class="pp-flag__stripe pp-flag__stripe--red"></span>
+        </span>
+        <svg class="pp-actions__caret" viewBox="0 0 10 6" fill="currentColor">
+          <path d="M0 0l5 6 5-6z"/>
+        </svg>
+      </button>
+
+      <!-- Always authenticated inside app-shell -->
+      @if (identity$ | async; as identity) {
+        <span class="pp-actions__username">{{ identity.login }}</span>
+      }
+      <button class="pp-actions__logout" type="button" (click)="logout()">Выйти</button>
+    </div>
+
+  </div>
+</header>
+
+<main class="pp-content">
+  <router-outlet />
+</main>
+
+<footer class="pp-footer">
+  <div class="pp-footer__inner">
+
+    <!-- Top row -->
+    <div class="pp-footer__top">
+
+      <!-- Nav links -->
+      <nav class="pp-footer__nav">
+        <a class="pp-footer__link" href="https://zakupki.mos.ru/about" target="_blank" rel="noopener">О портале</a>
+        <a class="pp-footer__link" href="https://zakupki.mos.ru/suppliers" target="_blank" rel="noopener">Поставщикам</a>
+        <a class="pp-footer__link" href="https://zakupki.mos.ru/news" target="_blank" rel="noopener">Новости</a>
+        <a class="pp-footer__link" href="https://zakupki.mos.ru/contacts" target="_blank" rel="noopener">Контакты</a>
+        <a class="pp-footer__link" href="https://zakupki.mos.ru/sitemap" target="_blank" rel="noopener">Карта сайта</a>
+      </nav>
+
+      <!-- Support links + socials -->
+      <div class="pp-footer__support">
+        <a class="pp-footer__support-link" href="https://zakupki.mos.ru/quality" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M3 11a9 9 0 1 1 18 0v1a3 3 0 0 1-3 3h-1a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h1"/>
+            <path d="M3 12a3 3 0 0 0 3 3h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H6"/>
+          </svg>
+          Служба качества
+        </a>
+        <a class="pp-footer__support-link" href="https://zakupki.mos.ru/support" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Написать в службу поддержки
+        </a>
+
+        <!-- Social icons -->
+        <div class="pp-footer__socials">
+          <!-- Facebook -->
+          <a class="pp-footer__social" href="https://www.facebook.com/zakupkimos" target="_blank" rel="noopener" title="Facebook">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+            </svg>
+          </a>
+          <!-- Twitter / X -->
+          <a class="pp-footer__social" href="https://twitter.com/zakupkimos" target="_blank" rel="noopener" title="Twitter">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53A4.48 4.48 0 0 0 22.43.36a9 9 0 0 1-2.83 1.08A4.52 4.52 0 0 0 16.11 0c-2.5 0-4.52 2.02-4.52 4.52 0 .35.04.7.11 1.03C7.69 5.37 4.07 3.58 1.64.9a4.52 4.52 0 0 0-.61 2.27c0 1.57.8 2.95 2.01 3.76a4.49 4.49 0 0 1-2.05-.57v.06c0 2.19 1.56 4.02 3.63 4.44a4.54 4.54 0 0 1-2.04.08 4.53 4.53 0 0 0 4.22 3.14A9.07 9.07 0 0 1 0 19.54a12.8 12.8 0 0 0 6.92 2.03c8.3 0 12.85-6.88 12.85-12.85 0-.2 0-.39-.01-.58A9.17 9.17 0 0 0 23 3z"/>
+            </svg>
+          </a>
+          <!-- Email -->
+          <a class="pp-footer__social" href="mailto:info@zakupki.mos.ru" title="Email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <polyline points="2,4 12,13 22,4"/>
+            </svg>
+          </a>
+          <!-- VK -->
+          <a class="pp-footer__social" href="https://vk.com/zakupkimos" target="_blank" rel="noopener" title="ВКонтакте">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.07 2H8.93C3.33 2 2 3.33 2 8.93v6.14C2 20.67 3.33 22 8.93 22h6.14C20.67 22 22 20.67 22 15.07V8.93C22 3.33 20.67 2 15.07 2zm3.08 13.67h-1.52c-.57 0-.75-.46-1.78-1.5-1-.97-1.43-.74-1.43.23v1.27H12c-2.5 0-4.1-1.55-4.1-1.55S5.67 11.33 4.73 8.38c-.08-.27.07-.41.33-.41h1.52c.5 0 .69.33.8.7.55 1.82 1.46 3.41 1.82 3.41.14 0 .2-.06.2-.39V9.36c-.05-.77-.43-.84-.43-1.11 0-.16.12-.33.32-.33h2.38c.42 0 .57.22.57.7v2.78c0 .27.12.36.2.36.14 0 .26-.09.52-.36 1-1.1 1.71-2.78 1.71-2.78.09-.21.27-.41.72-.41h1.53c.46 0 .56.24.46.5-.18.72-1.91 3.28-1.91 3.28-.15.24-.2.35 0 .62.15.2.64.63.97 1.01.6.67 1.06 1.23 1.18 1.62.1.38-.08.57-.46.57z"/>
+            </svg>
+          </a>
+          <!-- YouTube -->
+          <a class="pp-footer__social" href="https://www.youtube.com/zakupkimos" target="_blank" rel="noopener" title="YouTube">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.97C18.88 4 12 4 12 4s-6.88 0-8.59.45A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.97C5.12 20 12 20 12 20s6.88 0 8.59-.45a2.78 2.78 0 0 0 1.95-1.97A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
+              <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="#fff"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom row -->
+    <div class="pp-footer__bottom">
+      <span>© 2017–2025</span>
+      <span class="pp-footer__divider">·</span>
+      <span>Портал Поставщиков работает в соответствии с 44-ФЗ</span>
+    </div>
+
+  </div>
+</footer>

@@ -1,0 +1,36 @@
+<div class="rs-wrap">
+  <div class="rs-input-row">
+    <input
+      class="rs-input"
+      type="text"
+      placeholder="Выберите регион поставки"
+      autocomplete="off"
+      [ngModel]="query()"
+      (ngModelChange)="onInput($event)"
+      (focus)="onFocus()"
+      (keydown)="onKeydown($event)"
+    />
+    <button class="rs-toggle" type="button" tabindex="-1" (click)="onFocus()">
+      <svg viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.8"
+           [style.transform]="isOpen() ? 'rotate(180deg)' : 'none'">
+        <polyline points="1,1 6,7 11,1"/>
+      </svg>
+    </button>
+  </div>
+
+  @if (isOpen() && filtered().length) {
+    <ul class="rs-dropdown" role="listbox">
+      @for (region of filtered(); track region; let i = $index) {
+        <li
+          class="rs-option"
+          role="option"
+          [class.rs-option--active]="i === activeIndex()"
+          [class.rs-option--selected]="region === query()"
+          (mousedown)="select(region)"
+        >
+          {{ region }}
+        </li>
+      }
+    </ul>
+  }
+</div>

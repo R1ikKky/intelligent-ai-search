@@ -1,0 +1,299 @@
+/* ── Header ── */
+.rp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  background: #fff;
+  border-bottom: 1px solid #dce3ed;
+}
+
+.rp-header__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.rp-logo-icon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.rp-logo-box {
+  position: absolute;
+  display: block;
+  border-radius: 3px;
+}
+
+.rp-logo-box--back {
+  width: 28px;
+  height: 28px;
+  background: #c0bbb5;
+  top: 6px;
+  left: 6px;
+}
+
+.rp-logo-box--front {
+  width: 28px;
+  height: 28px;
+  background: #d0272d;
+  top: 0;
+  left: 0;
+  border: 3px solid #fff;
+}
+
+.rp-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.rp-logo-text__line1 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d0272d;
+  letter-spacing: 0.04em;
+}
+
+.rp-logo-text__line2 {
+  font-size: 10px;
+  font-weight: 600;
+  color: #555;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rp-header__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rp-header__login-btn {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a3a8f;
+  padding: 8px 18px;
+  border-radius: 4px;
+  border: 1px solid #1a3a8f;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.rp-header__login-btn:hover {
+  background: #1a3a8f;
+  color: #fff;
+}
+
+.rp-header__icons {
+  display: flex;
+  align-items: stretch;
+  border-left: 1px solid #dce3ed;
+}
+
+.rp-header__icon-btn {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-right: 1px solid #dce3ed;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5a6a80;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rp-header__icon-btn:hover {
+  background: #f0f4fa;
+  color: #1a3a6e;
+}
+
+.rp-header__icon-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ── Page body ── */
+.rp-page {
+  min-height: calc(100vh - 56px);
+  background: #dce6f0;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Decorative cubes ── */
+.rp-cube {
+  position: absolute;
+  display: block;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+.rp-cube--1 { width: 54px; height: 54px; top: 8%;   left: 5%;  transform: rotate(20deg); }
+.rp-cube--2 { width: 38px; height: 38px; top: 35%;  left: 9%;  transform: rotate(-10deg); opacity: 0.6; }
+.rp-cube--3 { width: 46px; height: 46px; top: 65%;  left: 3%;  transform: rotate(30deg); }
+.rp-cube--4 { width: 42px; height: 42px; top: 15%;  right: 6%; transform: rotate(-20deg); }
+.rp-cube--5 { width: 50px; height: 50px; top: 60%;  right: 4%; transform: rotate(15deg); opacity: 0.65; }
+
+/* ── Card ── */
+.rp-card {
+  width: 100%;
+  max-width: 660px;
+  background: #fff;
+  border: 1px solid #d0d8e4;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.rp-card__body {
+  padding: 40px 80px 32px;
+}
+
+.rp-card__title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  text-align: center;
+  margin: 0 0 28px;
+}
+
+/* ── Fields ── */
+.rp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.rp-field__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2a3545;
+}
+
+.rp-field__wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rp-field__input {
+  width: 100%;
+  padding: 12px 16px;
+  background: #edf2f8;
+  border: 1px solid #d4dce8;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #1a1a2e;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.rp-field__input:focus {
+  background: #e6edf6;
+  border-color: #1a3a8f;
+}
+
+.rp-field__input::placeholder {
+  color: #9aaabf;
+}
+
+.rp-field__wrap .rp-field__input {
+  padding-right: 44px;
+}
+
+.rp-field__eye {
+  position: absolute;
+  right: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #8a9ab5;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.rp-field__eye:hover {
+  color: #4a6080;
+}
+
+.rp-field__eye svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Error ── */
+.rp-error {
+  font-size: 13px;
+  color: #d0272d;
+  margin: -4px 0 12px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 2px;
+}
+
+/* ── Actions ── */
+.rp-card__actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rp-card__submit {
+  border: none;
+  background: #d0272d;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 32px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.15s;
+}
+
+.rp-card__submit:hover:not(:disabled) {
+  background: #b51f24;
+}
+
+.rp-card__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Footer ── */
+.rp-card__footer {
+  background: #edf2f8;
+  border-top: 1px solid #d0d8e4;
+  text-align: center;
+  padding: 18px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.rp-card__footer-link {
+  color: #1a56c4;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.rp-card__footer-link:hover {
+  text-decoration: underline;
+}

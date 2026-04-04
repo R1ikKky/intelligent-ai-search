@@ -1,0 +1,118 @@
+<!-- Page header (standalone, outside app-shell) -->
+<header class="lp-header">
+  <a class="lp-header__logo" routerLink="/auth/login">
+    <div class="lp-logo-icon">
+      <span class="lp-logo-box lp-logo-box--back"></span>
+      <span class="lp-logo-box lp-logo-box--front"></span>
+    </div>
+    <div class="lp-logo-text">
+      <span class="lp-logo-text__line1">ПОРТАЛ</span>
+      <span class="lp-logo-text__line2">ПОСТАВЩИКОВ</span>
+    </div>
+  </a>
+
+  <div class="lp-header__right">
+    <a class="lp-header__register-btn" routerLink="/auth/register">Зарегистрироваться</a>
+    <div class="lp-header__icons">
+      <button class="lp-header__icon-btn" type="button" title="Центр поддержки">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M3 11a9 9 0 1 1 18 0v1a3 3 0 0 1-3 3h-1a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h1"/>
+          <path d="M3 12a3 3 0 0 0 3 3h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H6"/>
+          <path d="M21 16v1a4 4 0 0 1-4 4h-3" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="lp-header__icon-btn" type="button" title="Помощь">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 2a6 6 0 0 1 4.243 10.243L17 15H7l.757-2.757A6 6 0 0 1 12 2z"/>
+          <path d="M9 17h6M10 20h4" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Page body -->
+<div class="lp-page">
+
+  <!-- Decorative cubes -->
+  <span class="lp-cube lp-cube--1"></span>
+  <span class="lp-cube lp-cube--2"></span>
+  <span class="lp-cube lp-cube--3"></span>
+  <span class="lp-cube lp-cube--4"></span>
+  <span class="lp-cube lp-cube--5"></span>
+
+  <!-- Login card -->
+  <div class="lp-card">
+
+    <!-- Form body -->
+    <div class="lp-card__body">
+      <h2 class="lp-card__title">Вход</h2>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+
+        <div class="lp-field">
+          <label class="lp-field__label" for="inn">ИНН</label>
+          <input
+            id="inn"
+            class="lp-field__input"
+            type="text"
+            formControlName="customerInn"
+            placeholder="Введите ИНН"
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="lp-field">
+          <label class="lp-field__label" for="password">Пароль</label>
+          <div class="lp-field__wrap">
+            <input
+              id="password"
+              class="lp-field__input"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Введите пароль"
+              autocomplete="current-password"
+            />
+            <button class="lp-field__eye" type="button" (click)="togglePassword()">
+              @if (showPassword()) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/>
+                </svg>
+              }
+            </button>
+          </div>
+        </div>
+
+        @if (error$ | async; as error) {
+          <p class="lp-error">{{ error }}</p>
+        }
+
+        <div class="lp-card__actions">
+          <a class="lp-card__forgot" href="#">Забыли пароль?</a>
+          <button
+            class="lp-card__submit"
+            type="submit"
+            [disabled]="(loading$ | async) ?? false"
+          >
+            @if (loading$ | async) { Вход… } @else { Войти }
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Card footer -->
+    <div class="lp-card__footer">
+      Нет аккаунта?&nbsp;
+      <a class="lp-card__footer-link" routerLink="/auth/register">Зарегистрируйтесь</a>
+    </div>
+
+  </div>
+</div>

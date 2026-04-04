@@ -1,0 +1,4 @@
+﻿<form class="toolbar" [formGroup]="form" (ngSubmit)="submit()">
+  <input type="text" formControlName="query" placeholder="Search for STE, category, or attribute" />
+  <button type="submit" [disabled]="loading()">Find</button>
+</form>
