@@ -1,0 +1,31 @@
+﻿import { Injectable, inject } from '@angular/core';
+import { Store } from '@ngrx/store';
+
+import { LoginRequest, RegisterRequest } from '../../../shared/models/auth.models';
+import { AuthActions } from '../store/auth.actions';
+import { selectAuthError, selectAuthLoading, selectIsAuthenticated } from '../store/auth.selectors';
+
+@Injectable({ providedIn: 'root' })
+export class AuthFacade {
+  private readonly store = inject(Store);
+
+  readonly isAuthenticated$ = this.store.select(selectIsAuthenticated);
+  readonly loading$ = this.store.select(selectAuthLoading);
+  readonly error$ = this.store.select(selectAuthError);
+
+  register(payload: RegisterRequest): void {
+    this.store.dispatch(AuthActions.registerRequested({ payload }));
+  }
+
+  login(payload: LoginRequest): void {
+    this.store.dispatch(AuthActions.loginRequested({ payload }));
+  }
+
+  refresh(): void {
+    this.store.dispatch(AuthActions.refreshRequested());
+  }
+
+  logout(): void {
+    this.store.dispatch(AuthActions.logoutRequested());
+  }
+}

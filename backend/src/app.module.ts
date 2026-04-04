@@ -34,6 +34,8 @@ import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
       isGlobal: true,
       load: [configuration],
       validationSchema,
+      // Look for .env in backend/ first, then fall back to project root (for local dev)
+      envFilePath: ['.env', '../.env'],
     }),
 
     TypeOrmModule.forRootAsync({

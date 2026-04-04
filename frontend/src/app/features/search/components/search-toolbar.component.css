@@ -1,0 +1,18 @@
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+}
+
+.toolbar input,
+.toolbar button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 14px 18px;
+}
+
+.toolbar button {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}

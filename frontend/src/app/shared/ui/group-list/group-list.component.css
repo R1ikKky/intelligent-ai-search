@@ -1,0 +1,27 @@
+.group-list {
+  display: grid;
+  gap: 16px;
+}
+
+.group-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-strong);
+  padding: 18px;
+}
+
+.group-card header p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.group-card header h3 {
+  margin: 0 0 12px;
+}
+
+.group-card ul {
+  margin: 0;
+  padding-left: 18px;
+}

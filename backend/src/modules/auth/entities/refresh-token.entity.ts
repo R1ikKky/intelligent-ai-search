@@ -25,10 +25,10 @@ export class RefreshToken {
   @JoinColumn({ name: 'customer_id' })
   customer!: Customer;
 
-  @Column({ name: 'user_agent', length: 200, nullable: true })
+  @Column({ name: 'user_agent', type: 'varchar', length: 200, nullable: true })
   userAgent!: string | null;
 
-  @Column({ length: 45, nullable: true })
+  @Column({ type: 'varchar', length: 45, nullable: true })
   ip!: string | null;
 
   @Column({ name: 'expires_at', type: 'timestamptz' })

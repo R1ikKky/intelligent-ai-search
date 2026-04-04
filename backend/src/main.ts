@@ -23,8 +23,24 @@ async function bootstrap() {
   // Global exception filter (RFC 7807)
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // CORS for frontend
-  app.enableCors();
+  // CORS for frontend — wildcard origin blocks withCredentials cookies,
+  // so we explicitly allow the dev origin and reflect the request origin in Docker.
+  const allowedOrigins = [
+    'http://localhost:4200', // ng serve
+    'http://localhost:3000', // SSR / direct
+  ];
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // allow requests with no origin (curl, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'],
+  });
 
   // Swagger
   const docConfig = new DocumentBuilder()
