@@ -51,3 +51,20 @@ class CustomerTableResponseSerializer(serializers.Serializer):
 
 class UpdateCustomerRegionSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=512)
+
+
+class UserProfileResponseSerializer(serializers.Serializer):
+    """Текущий пользователь: Django User + строка customer (если есть)."""
+
+    userId = serializers.IntegerField()
+    customerInn = serializers.CharField()
+    login = serializers.CharField()
+    email = serializers.EmailField(allow_blank=True)
+    firstName = serializers.CharField(allow_blank=True)
+    lastName = serializers.CharField(allow_blank=True)
+    isActive = serializers.BooleanField()
+    isStaff = serializers.BooleanField()
+    dateJoined = serializers.DateTimeField()
+    lastLogin = serializers.DateTimeField(allow_null=True)
+    customerName = serializers.CharField(allow_null=True, required=False)
+    customerRegion = serializers.CharField(allow_null=True, required=False)

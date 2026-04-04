@@ -16,7 +16,7 @@ docker compose up --build -d
 - **Импорт датасета в Postgres:** в папку **`data/`** положите оба файла **`Контракты_20260403.csv`** и **`СТЕ_20260403.csv`** (разделитель `;`, кодировка UTF-8 с BOM, без строки заголовка — см. [docks/datasets.manifest.json](docks/datasets.manifest.json)). После того как контейнер **postgres** станет healthy, один раз отработает **dataset-loader**. Если CSV нет — в логах будет предупреждение, контейнер завершится с кодом 0, **postgres** и **frontend** продолжают работать без заливки таблиц из этих файлов.
 - Повторить только загрузку в уже поднятую БД: `docker compose up -d postgres`, затем `docker compose run --rm dataset-loader`.
 
-**После успешного старта:** UI — http://localhost:4200 ; Postgres — `localhost:5432` (значения по умолчанию: пользователь `search_user`, БД `search_db`, пароль `search_pass`).
+**После успешного старта:** UI — http://localhost:4200 ; документация API — [Swagger UI (OpenAPI)](http://localhost:3000/schema/swagger-ui/) ; Postgres — `localhost:5432` (значения по умолчанию: пользователь `search_user`, БД `search_db`, пароль `search_pass`).
 
 ---
 
@@ -73,8 +73,8 @@ docker compose up --build -d
 
    | Сервис        | Порт  | URL / примечание |
    |---------------|-------|------------------|
-   | API + Swagger | 3000  | http://localhost:3000/api |
-   | Health        | 3000  | http://localhost:3000/health |
+   | API (Django) | 3000  | http://localhost:3000 |
+   | Swagger UI   | 3000  | [Swagger UI](http://localhost:3000/schema/swagger-ui/) |
    | Elasticsearch | 9200  | http://localhost:9200 |
    | Postgres      | 5432  | user/pass/db из compose или `.env` |
    | Redis         | 6379  | — |
@@ -95,7 +95,7 @@ docker compose up --build -d
 
 ## Авторизация (кратко)
 
-- Регистрация: `POST /auth/register` — тело с полями `inn`, `password`, `orgName`, `location` (как в Swagger).
+- Регистрация: `POST /auth/register` — тело с полями `inn`, `password`, `orgName`, `location` (см. [Swagger UI](http://localhost:3000/schema/swagger-ui/)).
 - В ответе приходит **access token**; **refresh** выставляется в **httpOnly cookie** `refreshToken`.
 - Обновление access: `POST /auth/refresh` (с тем же cookie).
 - Выход: `POST /auth/logout`.
@@ -133,7 +133,7 @@ python -m etl.validate_dataset
 
 - Остановка: `docker compose down`
 - Логи app: `docker compose logs -f app`
-- Повторная индексация СТЕ в ES (если API уже запущен): `POST /indexing/reindex` (см. Swagger).
+- Повторная индексация СТЕ в ES (если API уже запущен): `POST /indexing/reindex` (см. [Swagger UI](http://localhost:3000/schema/swagger-ui/)).
 
 ## Переменные окружения
 
