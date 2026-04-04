@@ -18,10 +18,10 @@ export class SuggestService {
   }
 
   async suggest(dto: SuggestQueryDto): Promise<SuggestResponseDto> {
-    const { query, limit = 10, include_spellfix = true, include_synonyms = true } = dto;
+    const { query, limit = 10 } = dto;
     const items: SuggestItemDto[] = [];
 
-    // 1. Prefix / completion suggestions from ES
+    // 1. Prefix / completion suggestions from ES (spellfix always on)
     const esResponse = await this.esClient.search({
       index: this.index,
       size: limit,
@@ -29,17 +29,12 @@ export class SuggestService {
         multi_match: {
           query,
           fields: ['name^3', 'description', 'synonyms^2'],
-          fuzziness: include_spellfix ? 'AUTO' : '0',
+          fuzziness: 'AUTO',
           analyzer: 'russian',
           type: 'best_fields',
         },
       },
       _source: ['name'],
-      highlight: {
-        fields: { name: {} },
-        pre_tags: [''],
-        post_tags: [''],
-      },
     });
 
     const seen = new Set<string>();
@@ -51,44 +46,27 @@ export class SuggestService {
       if (seen.has(text)) continue;
       seen.add(text);
 
-      const isTypo =
-        include_spellfix &&
-        !text.toLowerCase().startsWith(query.toLowerCase().substring(0, 4));
-
-      items.push({
-        text,
-        kind: isTypo ? 'spellfix' : 'popular',
-        flags: isTypo
-          ? ['TYPO_CORRECTION', 'CAN_REPLACE_QUERY']
-          : ['POPULAR_MATCH'],
-        score: Math.round((hit._score ?? 0) * 100) / 100,
-      });
+      const isTypo = !text.toLowerCase().startsWith(query.toLowerCase().substring(0, 4));
+      items.push({ text, kind: isTypo ? 'spellfix' : 'popular' });
     }
 
-    // 2. Synonym expansion hints
-    if (include_synonyms) {
-      const synonymLines = this.synonymsService.getSynonymLines();
-      for (const line of synonymLines) {
-        const terms = line.split(',').map((t) => t.trim());
-        const matched = terms.find((t) =>
-          t.toLowerCase().includes(query.toLowerCase().slice(0, 4)),
-        );
-        if (!matched) continue;
-        for (const alt of terms) {
-          if (alt === matched || seen.has(alt)) continue;
-          seen.add(alt);
-          items.push({
-            text: alt,
-            kind: 'synonym',
-            flags: ['SYNONYM_EXPANSION'],
-            score: 0.7,
-          });
-          if (items.length >= limit) break;
-        }
+    // 2. Synonym expansion (always on)
+    const synonymLines = this.synonymsService.getSynonymLines();
+    for (const line of synonymLines) {
+      const terms = line.split(',').map((t) => t.trim());
+      const matched = terms.find((t) =>
+        t.toLowerCase().includes(query.toLowerCase().slice(0, 4)),
+      );
+      if (!matched) continue;
+      for (const alt of terms) {
+        if (alt === matched || seen.has(alt)) continue;
+        seen.add(alt);
+        items.push({ text: alt, kind: 'synonym' });
         if (items.length >= limit) break;
       }
+      if (items.length >= limit) break;
     }
 
-    return { query, items: items.slice(0, limit) };
+    return { normalized_query: query, items: items.slice(0, limit) };
   }
 }

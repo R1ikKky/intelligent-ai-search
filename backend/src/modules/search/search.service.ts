@@ -36,7 +36,7 @@ export class SearchService {
   }
 
   async search(query: SearchQueryDto): Promise<SearchResponseDto> {
-    const { q, userId, page = 1, limit = 20, category } = query;
+    const { q, userId, page = 1, limit = 20, region } = query;
     const from = (page - 1) * limit;
 
     const response = await this.esClient.search<ProductDoc>({
@@ -55,7 +55,7 @@ export class SearchService {
                 type: 'best_fields',
               },
             },
-            ...(category ? [{ term: { 'category.keyword': category } }] : []),
+            ...(region ? [{ term: { 'region.keyword': region } }] : []),
           ],
         },
       },
