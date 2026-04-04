@@ -20,7 +20,9 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Регистрация по ИНН и паролю' })
+  @ApiOperation({
+    summary: 'Регистрация по ИНН и паролю (привязка к customer_data из ETL или создание карточки)',
+  })
   @ApiResponse({ status: 201, type: TokenResponseDto })
   @ApiResponse({ status: 409, description: 'ИНН уже зарегистрирован' })
   register(

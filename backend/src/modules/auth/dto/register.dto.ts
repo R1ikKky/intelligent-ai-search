@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Length, Matches, MinLength, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  Length,
+  Matches,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 
+/** Контракт как на feature/backend; при новом заказчике создаётся строка customer_data. */
 export class RegisterDto {
   @ApiProperty({ example: '7701234567', description: 'ИНН заказчика (10 или 12 цифр)' })
   @IsString()

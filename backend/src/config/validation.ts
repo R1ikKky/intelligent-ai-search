@@ -14,6 +14,7 @@ export const validationSchema = Joi.object({
   POSTGRES_DB: Joi.string().required(),
   ELASTICSEARCH_NODE: Joi.string().uri().required(),
   ELASTICSEARCH_INDEX: Joi.string().default('products'),
+  AUTO_REINDEX_ON_START: Joi.string().valid('true', 'false').default('false'),
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().default(6379),
   MAX_SCORE: Joi.number().default(100),

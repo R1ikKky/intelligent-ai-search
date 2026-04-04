@@ -9,14 +9,16 @@ import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, QueryFailedError } from 'typeorm';
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcrypt';
-import { Customer, CustomerStatus } from './entities/customer.entity';
-import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
+import { Customer } from '../../domain/entities/customer.entity';
+import { CustomerData } from '../../domain/entities/customer-data.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { ProfileService } from '../profile/profile.service';
 
 const REFRESH_COOKIE = 'refreshToken';
-const REFRESH_EXPIRES_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const REFRESH_EXPIRES_MS = 30 * 24 * 60 * 60 * 1000;
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
@@ -24,33 +26,74 @@ export class AuthService {
   constructor(
     @InjectRepository(Customer)
     private readonly customerRepo: Repository<Customer>,
+    @InjectRepository(CustomerData)
+    private readonly customerDataRepo: Repository<CustomerData>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly profileService: ProfileService,
   ) {}
+
+  private signToken(customerId: string, type: 'access' | 'refresh'): string {
+    const expiresIn = (this.configService.get<string>(
+      `jwt.${type}ExpiresIn`,
+    ) ?? (type === 'access' ? '15m' : '30d')) as
+      | `${number}${'s' | 'm' | 'h' | 'd'}`
+      | undefined;
+    return this.jwtService.sign(
+      { sub: customerId },
+      {
+        secret: this.configService.get<string>(`jwt.${type}Secret`),
+        expiresIn,
+      },
+    );
+  }
 
   async register(
     dto: RegisterDto,
     req: Request,
     res: Response,
   ): Promise<TokenResponseDto> {
+    const inn = dto.inn;
+    const existing = await this.customerRepo.findOne({ where: { login: inn } });
+    if (existing) {
+      throw new ConflictException('Учётная запись с таким ИНН уже существует');
+    }
+
+    let data = await this.customerDataRepo.findOne({ where: { id: inn } });
+    const now = new Date();
+    if (!data) {
+      data = this.customerDataRepo.create({
+        id: inn,
+        customerName: dto.orgName,
+        customerNameNormalized: inn,
+        customerRegion: dto.location,
+        orgTypePrimary: null,
+        orgTypeTags: [],
+        nameVariants: {},
+        sourceFirstSeenAt: now,
+        sourceLastSeenAt: now,
+      });
+      await this.customerDataRepo.save(data);
+    }
+
     try {
       const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
       const customer = await this.customerRepo.save(
         this.customerRepo.create({
-          login: dto.inn,
+          customerDataId: inn,
+          login: inn,
           passwordHash,
-          orgName: dto.orgName,
-          location: dto.location,
-          status: CustomerStatus.ACTIVE,
+          status: 'active',
         }),
       );
+      await this.profileService.syncColdStartFromOrg(customer.id, customer.customerDataId);
       return this.issueSession(customer, req, res);
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as any).code === '23505') {
+      if (err instanceof QueryFailedError && (err as { code?: string }).code === '23505') {
         throw new ConflictException('Учётная запись с таким ИНН уже существует');
       }
       throw err;
@@ -68,7 +111,7 @@ export class AuthService {
     if (!customer) {
       throw new UnauthorizedException('Неверный ИНН или пароль');
     }
-    if (customer.status !== CustomerStatus.ACTIVE) {
+    if (customer.status !== 'active') {
       throw new UnauthorizedException('Учётная запись заблокирована');
     }
 
@@ -81,6 +124,7 @@ export class AuthService {
       this.issueSession(customer, req, res),
       this.customerRepo.update(customer.id, { lastLoginAt: new Date() }),
     ]);
+    await this.profileService.syncColdStartFromOrg(customer.id, customer.customerDataId);
     return tokenResponse;
   }
 
@@ -157,16 +201,6 @@ export class AuthService {
     this.setRefreshCookie(res, refreshToken);
 
     return { accessToken, customerId: customer.id, login: customer.login };
-  }
-
-  private signToken(customerId: string, type: 'access' | 'refresh'): string {
-    return this.jwtService.sign(
-      { sub: customerId },
-      {
-        secret: this.configService.get<string>(`jwt.${type}Secret`),
-        expiresIn: this.configService.get<string>(`jwt.${type}ExpiresIn`) ?? (type === 'access' ? '15m' : '30d'),
-      },
-    );
   }
 
   private extractClientMeta(req: Request): { userAgent: string | null; ip: string | null } {
