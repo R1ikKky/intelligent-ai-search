@@ -131,7 +131,7 @@
 
 | Модуль | Статус | Endpoints |
 |---|---|---|
-| `AuthModule` | ✅ Реализован | `POST /auth/login` |
+| `AuthModule` | ✅ Реализован | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
 | `ProductsModule` | ✅ Реализован | `GET /products/search`, `GET /products/:id`, `POST /products/bulk-import` |
 | `SearchModule` | ✅ Реализован | `POST /search/suggest` |
 | `UserBehaviorModule` | ✅ Реализован | `POST /events/bulk`, `GET /events/scores/:userId` |
@@ -143,9 +143,8 @@
 
 | Модуль | Статус | Что нужно |
 |---|---|---|
-| `CustomerModule` | 🔲 Нужен | `POST /auth/register` с реальным паролем, привязка к `customer_inn` |
 | `ProfileModule` | 🔲 Нужен | `customer_preference_profile`, cold-start по похожим организациям |
-| `SessionModule` | 🔲 Нужен | Хранение `search_session`, `search_query` для телеметрии |
+| `SearchSessionModule` | 🔲 Нужен | Хранение `search_session`, `search_query` для телеметрии поиска (отдельно от auth) |
 | `AdminModule` | 🔲 Опционально | Метрики, просмотр профилей, quality log |
 
 **Инфраструктурный слой (всё уже подключено):**
@@ -544,16 +543,34 @@ sequenceDiagram
     participant API as NestJS API
     participant DB as PostgreSQL
 
-    User->>FE: Заполняет форму регистрации
-    FE->>API: POST /api/auth/register
-    API->>DB: upsert customer_data
-    API->>DB: create customer
-    API-->>FE: access token + session info
+    User->>FE: Заполняет форму регистрации (ИНН + пароль)
+    FE->>API: POST /auth/register
+    API->>DB: bcrypt.hash(password, 12)
+    API->>DB: INSERT INTO customer (login=INN, password_hash, status='active')
+    API->>DB: INSERT INTO refresh_tokens
+    API-->>FE: { accessToken } + Set-Cookie: refreshToken (httpOnly)
 
     User->>FE: Вводит customer_inn и password
-    FE->>API: POST /api/auth/login
-    API->>DB: verify password hash
-    API-->>FE: access token + refresh token
+    FE->>API: POST /auth/login
+    API->>DB: SELECT customer WHERE login=INN
+    API->>DB: bcrypt.compare(password, hash)
+    API->>DB: UPDATE customer SET last_login_at
+    API->>DB: INSERT INTO refresh_tokens
+    API-->>FE: { accessToken } + Set-Cookie: refreshToken (httpOnly)
+
+    Note over FE,API: Access token истекает через 15 минут
+
+    FE->>API: POST /auth/refresh (cookie: refreshToken)
+    API->>DB: BEGIN TRANSACTION
+    API->>DB: DELETE old refresh_token
+    API->>DB: INSERT new refresh_token
+    API->>DB: COMMIT
+    API-->>FE: { accessToken } + Set-Cookie: refreshToken (новый, httpOnly)
+
+    User->>FE: Выход
+    FE->>API: POST /auth/logout (cookie: refreshToken)
+    API->>DB: DELETE refresh_token
+    API-->>FE: 204 No Content + Clear-Cookie
 ```
 
 ### 9.3 Диаграмма состояний: жизненный цикл взаимодействия с карточкой товара
@@ -1080,30 +1097,32 @@ time_weight = exp(-days_since_event / 365)
 
 ## 16. Формат запросов между фронтом и беком
 
+> **Аутентификация:** все защищённые endpoints (кроме `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`) требуют заголовок:
+> ```
+> Authorization: Bearer <accessToken>
+> ```
+> `accessToken` получается при входе/регистрации и обновляется через `POST /auth/refresh`. Срок жизни — 15 минут.
+
 > **Примечание:** Backend не использует глобальный `/api` префикс — маршруты начинаются сразу с ресурса (например `POST /auth/login`). Фронтенд должен настроить `baseUrl` в HTTP-клиенте.
 
 ### 16.1 Регистрация
 
-`POST /auth/register` *(планируется — сейчас: `POST /auth/login` возвращает JWT)*
+`POST /auth/register`
 
 ```json
 {
-  "customer_inn": "7701234567",
-  "customer_name": "ГБУ Пример",
-  "customer_region": "Москва",
+  "inn": "7701234567",
   "password": "StrongPassword123!"
 }
 ```
 
-Ответ:
+Ответ `201 Created` + `Set-Cookie: refreshToken=<jwt>; HttpOnly; SameSite=Strict`:
 
 ```json
 {
-  "customer_id": "7f76d7db-4e58-44a6-b780-8f2d827c8f3b",
-  "customer_data_id": "7701234567",
-  "login": "7701234567",
-  "access_token": "jwt",
-  "refresh_token": "jwt"
+  "accessToken": "eyJhbGci...",
+  "customerId": "7f76d7db-4e58-44a6-b780-8f2d827c8f3b",
+  "login": "7701234567"
 }
 ```
 
@@ -1113,35 +1132,47 @@ time_weight = exp(-days_since_event / 365)
 
 ```json
 {
-  "customer_inn": "7701234567",
+  "inn": "7701234567",
   "password": "StrongPassword123!"
 }
 ```
 
-Ответ:
+Ответ `200 OK` + `Set-Cookie: refreshToken=<jwt>; HttpOnly; SameSite=Strict`:
 
 ```json
 {
-  "customer_id": "7f76d7db-4e58-44a6-b780-8f2d827c8f3b",
-  "customer_data_id": "7701234567",
-  "login": "7701234567",
-  "access_token": "jwt",
-  "refresh_token": "jwt"
+  "accessToken": "eyJhbGci...",
+  "customerId": "7f76d7db-4e58-44a6-b780-8f2d827c8f3b",
+  "login": "7701234567"
 }
 ```
+
+### 16.2а Обновление токена
+
+`POST /auth/refresh` — принимает `refreshToken` из cookie, возвращает новую пару.
+
+Ответ `200 OK`:
+
+```json
+{
+  "accessToken": "eyJhbGci..."
+}
+```
+
+### 16.2б Выход
+
+`POST /auth/logout` — удаляет refresh token из БД и очищает cookie.
+
+Ответ `204 No Content`.
 
 ### 16.3 Подсказки при вводе
 
-`POST /search/suggest`
+`POST /search/suggest` — требует `Authorization: Bearer <accessToken>`
 
 ```json
 {
-  "session_id": "f29f98d2-1178-4e50-bd08-d7c4bd6a5f13",
   "query": "резистар 3 ом",
-  "limit": 10,
-  "include_history": true,
-  "include_spellfix": true,
-  "include_synonyms": true
+  "limit": 10
 }
 ```
 
@@ -1149,26 +1180,19 @@ time_weight = exp(-days_since_event / 365)
 
 ```json
 {
-  "query": "резистар 3 ом",
-  "normalized_query": "резистар 3 ом",
+  "normalized_query": "резистор 3 ом",
   "items": [
     {
       "text": "резистор 3 ом",
-      "kind": "spellfix",
-      "flags": ["TYPO_CORRECTION", "CAN_REPLACE_QUERY"],
-      "score": 0.96
+      "kind": "spellfix"
     },
     {
       "text": "резистор 3 ом smd",
-      "kind": "history",
-      "flags": ["FROM_HISTORY", "PERSONALIZED"],
-      "score": 0.83
+      "kind": "history"
     },
     {
       "text": "сопротивление 3 ом",
-      "kind": "synonym",
-      "flags": ["SYNONYM_EXPANSION"],
-      "score": 0.72
+      "kind": "synonym"
     }
   ]
 }
@@ -1176,25 +1200,20 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.4 Поиск
 
-`GET /products/search?q=...&userId=...&page=...&limit=...&category=...`
+`GET /products/search?q=...&userId=...&page=...&limit=...&region=...`
 
-*(Реализован. GET вместо POST — проще кэшировать на уровне CDN/nginx. Query params соответствуют оригинальному контракту.)*
+*(Реализован. GET вместо POST — проще кэшировать на уровне CDN/nginx. Единственный фильтр — `region` (регион заказчика).)*
 
-Для демо с расширенной группировкой используется тот же endpoint с параметром `group_by=manufacturer` (планируется).
-
-Альтернативный POST-вариант для сложных фильтров:
+Альтернативный POST-вариант (планируется):
 
 ```json
 {
-  "session_id": "f29f98d2-1178-4e50-bd08-d7c4bd6a5f13",
   "query": "резистар 3 ом",
   "page": 1,
   "page_size": 20,
-  "group_by": "manufacturer",
   "sort": "personalized",
   "filters": {
-    "category": ["Резисторы"],
-    "supplier_region": ["Москва"]
+    "region": ["Москва"]
   }
 }
 ```
@@ -1209,20 +1228,17 @@ time_weight = exp(-days_since_event / 365)
   "corrected_query": "резистор 3 ом",
   "corrections": [
     {
-      "text": "резистор 3 ом",
-      "flags": ["TYPO_CORRECTION", "APPLIED"]
+      "text": "резистор 3 ом"
     }
   ],
   "recommendations": [
     {
       "text": "резистор 3 ом smd",
-      "kind": "history",
-      "flags": ["FROM_HISTORY", "PERSONALIZED"]
+      "kind": "history"
     },
     {
       "text": "сопротивление 3 ом",
-      "kind": "synonym",
-      "flags": ["SYNONYM_EXPANSION"]
+      "kind": "synonym"
     }
   ],
   "groups": [
@@ -1230,16 +1246,13 @@ time_weight = exp(-days_since_event / 365)
       "group_key": "brand:abc|family:resistor",
       "group_title": "ABC",
       "group_type": "manufacturer_attr",
-      "manufacturer_confidence": 0.94,
       "collapsed_variants_count": 3,
-      "score": 0.8812,
       "items": [
         {
           "ste_id": "1234567",
           "name": "Резистор ABC 1 Ом",
           "category": "Резисторы",
           "supplier_id": "7701234567",
-          "score": 0.8812,
           "attributes": {
             "Сопротивление": "1 Ом"
           }
@@ -1249,7 +1262,6 @@ time_weight = exp(-days_since_event / 365)
           "name": "Резистор ABC 2 Ом",
           "category": "Резисторы",
           "supplier_id": "7701234567",
-          "score": 0.8574,
           "attributes": {
             "Сопротивление": "2 Ом"
           }
@@ -1267,11 +1279,10 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.5 Приём событий с фронта
 
-`POST /events/bulk` *(реализован)*
+`POST /events/bulk` *(реализован)* — требует `Authorization: Bearer <accessToken>`
 
 ```json
 {
-  "session_id": "f29f98d2-1178-4e50-bd08-d7c4bd6a5f13",
   "events": [
     {
       "event_id": "44efc5fa-7e54-4f70-a5fe-f9f7825298e7",
@@ -1306,10 +1317,7 @@ time_weight = exp(-days_since_event / 365)
 }
 ```
 
-Пояснения:
-
-- `search_results_dwell` — одно событие **при уходе** со страницы/экрана с результатами поиска (новый запрос, открытие карточки, уход с маршрута). Обязательны `dwell_ms` и `active_time_ms` (см. §17.1).
-- `product_view_end` — одно событие **при уходе** со страницы товара; те же поля времени. `product_view_start` в MVP не обязателен, если идентификаторы уже известны из навигации.
+Подробное описание всех полей, типов событий и правил подсчёта времени — в **§17**.
 
 Ответ:
 
@@ -1322,11 +1330,10 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.6 Рекомендации при первом входе
 
-`POST /recommendations/bootstrap` *(планируется — ProfileModule)*
+`POST /recommendations/bootstrap` *(планируется — ProfileModule)* — требует `Authorization: Bearer <accessToken>`
 
 ```json
 {
-  "session_id": "f29f98d2-1178-4e50-bd08-d7c4bd6a5f13",
   "limit": 10
 }
 ```
@@ -1341,7 +1348,6 @@ time_weight = exp(-days_since_event / 365)
     {
       "group_key": "brand:med|family:consumables",
       "group_title": "Расходные материалы для поликлиник",
-      "score": 0.8123,
       "items": [
         {
           "ste_id": "1234567",
@@ -1356,63 +1362,172 @@ time_weight = exp(-days_since_event / 365)
 
 ---
 
-## 17. Какие события отправлять с фронта
+## 17. Как отправлять события с фронта
 
-Цель — персонализация и демонстрация адаптации выдачи **без** потока мелких запросов. В запросах не дублировать полный текст поиска в каждом событии: достаточно `search_query_id` и `session_id`, выданных API.
+Все события уходят одним пакетом в `POST /events/bulk` с заголовком `Authorization: Bearer <accessToken>`. Никаких heartbeat-запросов каждые N секунд — таймеры копятся на клиенте, в сеть уходит итог при уходе с экрана.
 
-### 17.1 Как считать время на странице выдачи и на странице товара
+### 17.1 Структура запроса
 
-Для **страницы с результатами поиска** и **страницы товара** фиксируем два значения и передаём их **одним событием при уходе** с соответствующего экрана:
+```
+POST /events/bulk
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
 
-| Поле | Смысл |
-|------|--------|
-| `dwell_ms` | календарное время от показа экрана до ухода |
-| `active_time_ms` | время, когда вкладка была видимой (Page Visibility) и пользователь проявлял активность (скролл, движение мыши, клавиатура, фокус в пределах страницы — минимальный набор на усмотрение фронта) |
+```json
+{
+  "events": [
+    {
+      "event_id": "44efc5fa-7e54-4f70-a5fe-f9f7825298e7",
+      "event_type": "search_submit",
+      "search_query_id": "29fef2dc-a328-4d1a-83fe-8bdde7ebd345",
+      "event_at": "2026-04-04T14:10:00Z"
+    },
+    {
+      "event_id": "a9012c3d-1111-4a2b-9c0d-ef1234567890",
+      "event_type": "search_results_dwell",
+      "search_query_id": "29fef2dc-a328-4d1a-83fe-8bdde7ebd345",
+      "event_at": "2026-04-04T14:10:45Z",
+      "dwell_ms": 45000,
+      "active_time_ms": 32000,
+      "payload": {
+        "leave_reason": "open_product"
+      }
+    },
+    {
+      "event_id": "1d6656a9-8b39-4fc8-9f9d-b1f5f3076862",
+      "event_type": "product_view_end",
+      "search_query_id": "29fef2dc-a328-4d1a-83fe-8bdde7ebd345",
+      "ste_id": "1234567",
+      "event_at": "2026-04-04T14:11:08Z",
+      "dwell_ms": 58000,
+      "active_time_ms": 51000,
+      "payload": {
+        "result_rank": 2
+      }
+    }
+  ]
+}
+```
 
-Правила:
+Ответ:
 
-1. Пока вкладка в фоне или окно свернуто — время **не** добавляется в `active_time_ms`.
-2. Длинный простой без действий (например >30 с) можно не копить в `active_time_ms`, чтобы отсечь «оставил вкладку открытой».
-3. **Не** отправлять heartbeat по сети каждые N секунд: таймеры ведутся на клиенте, в `POST /api/events/bulk` уходит итог.
+```json
+{
+  "accepted": 3,
+  "queued_profile_recalc": true
+}
+```
 
-События:
+### 17.2 Описание полей каждого события
 
-- `search_results_dwell` — уход с экрана выдачи; обязательны `search_query_id`, `dwell_ms`, `active_time_ms`.
-- `product_view_end` — уход со страницы товара; обязательны `search_query_id`, `ste_id`, `dwell_ms`, `active_time_ms`.
+#### Общие поля (присутствуют в каждом событии)
 
-### 17.2 Обязательный набор (MVP)
+| Поле | Тип | Обязателен | Описание |
+|------|-----|-----------|----------|
+| `event_id` | `uuid` | ✅ | Уникальный идентификатор события, генерируется на **клиенте** (`crypto.randomUUID()`). Используется как idempotency-ключ — дублирующий `event_id` будет молча отброшен, поэтому можно безопасно повторять запрос при сетевой ошибке. |
+| `event_type` | `string` | ✅ | Тип события — одно из значений, перечисленных в §17.3. Определяет, какой набор дополнительных полей обязателен. |
+| `event_at` | `ISO 8601` | ✅ | Время **на клиенте**, когда событие фактически произошло. Не время отправки пакета — время действия. Например, для `product_view_end` это момент ухода со страницы товара. Используется для упорядочивания событий на сервере и построения временны́х сигналов персонализации. |
+| `search_query_id` | `uuid \| null` | ⬜ | ID поискового запроса, возвращённый в поле `query_id` ответа `GET /products/search`. Связывает событие с конкретным поиском, чтобы знать, после какого запроса пользователь открыл карточку или провёл на выдаче время. Для событий вне контекста поиска (например, прямой переход по закладке) — `null`. |
+| `ste_id` | `string \| null` | ⬜ | Идентификатор СТЕ из каталога. Обязателен для событий, связанных с конкретной карточкой товара: `product_view_end`, `product_card_click`. Для событий уровня поиска — `null`. |
+| `payload` | `object \| null` | ⬜ | Произвольный объект с контекстными данными, специфичными для типа события. Поля внутри описаны в §17.3 для каждого типа. |
 
-1. `search_submit` — после успешного `POST /api/search`, чтобы связать сессию с `search_query_id` (достаточно `search_query_id` и `event_at`).
-2. `search_results_dwell` — см. §17.1.
-3. `product_view_end` — см. §17.1.
+#### Поля времени (для событий с `dwell_ms`)
 
-Опционально для отладки: `product_view_start` с теми же идентификаторами (без обязательной отправки на сервер в MVP).
+| Поле | Тип | Обязателен | Описание |
+|------|-----|-----------|----------|
+| `dwell_ms` | `integer` | ✅ для dwell-событий | Полное **календарное** время пребывания на экране в миллисекундах — от первого рендера до ухода (навигация, закрытие вкладки, `beforeunload`). Включает время, когда вкладка была в фоне. |
+| `active_time_ms` | `integer` | ✅ для dwell-событий | Время **активного внимания** пользователя в миллисекундах. Отсчитывается только когда: (1) вкладка видима (`document.visibilityState === 'visible'`), (2) пользователь проявлял активность — скролл, движение мыши, клик, нажатие клавиши — за последние 30 секунд. Паузы без активности свыше 30 секунд не добавляются. Используется бэком как главный сигнал интереса: `active_time_ms > 25 000` считается глубоким просмотром, `< 8 000` — быстрым отказом (quick bounce). |
 
-### 17.3 Расширенные события (demo / второй этап)
+### 17.3 Типы событий и их поля
 
-При необходимости «богатой» аналитики или сценария защиты можно добавить:
+#### `search_submit`
+Отправляется сразу после получения ответа от `GET /products/search`. Связывает пользователя с конкретным поисковым запросом.
 
-`session_start`, `session_end`, `search_input_changed` (debounce), `suggestion_impression`, `suggestion_selected`, `search_results_impression`, `filter_changed`, `sort_changed`, `product_card_click`, `back_to_results`, `query_reformulation`, детальный `payload` (например `scroll_depth_pct`).
+| Поле | Обязателен | Значение |
+|------|-----------|---------|
+| `search_query_id` | ✅ | `query_id` из ответа поиска |
+| `event_at` | ✅ | Момент отправки запроса |
 
-### 17.4 Сценарий для демонстрации комиссии
+---
 
-1. Сессия 1:
-   - пользователь вводит запрос `Q`;
-   - открывает товарную группу A и изучает её 60-90 секунд;
-   - открывает группу B и быстро возвращается;
-   - завершает сессию.
+#### `search_results_dwell`
+Одно событие **при уходе** с экрана результатов поиска (переход на карточку, новый запрос, уход с маршрута). Не отправляется при каждом скролле.
 
-2. Между сессиями:
-   - worker агрегирует события;
-   - обновляет `customer_preference_profile` и `session_feedback_profile`.
+| Поле | Обязателен | Значение |
+|------|-----------|---------|
+| `search_query_id` | ✅ | ID запроса, выдачу которого просматривал |
+| `dwell_ms` | ✅ | Полное время на экране выдачи |
+| `active_time_ms` | ✅ | Активное время (см. §17.2) |
+| `payload.leave_reason` | ⬜ | `"open_product"` / `"new_search"` / `"navigate_away"` |
 
-3. Сессия 2:
+---
+
+#### `product_view_end`
+Одно событие **при уходе** со страницы карточки товара.
+
+| Поле | Обязателен | Значение |
+|------|-----------|---------|
+| `search_query_id` | ✅ | ID поиска, из которого открыли карточку |
+| `ste_id` | ✅ | ID просмотренного СТЕ |
+| `dwell_ms` | ✅ | Полное время на карточке |
+| `active_time_ms` | ✅ | Активное время (см. §17.2) |
+| `payload.result_rank` | ⬜ | Позиция в выдаче, с которой открыли карточку (0-based) |
+
+---
+
+#### `product_card_click` *(опционально)*
+Момент клика по карточке в результатах поиска, до перехода на страницу товара.
+
+| Поле | Обязателен | Значение |
+|------|-----------|---------|
+| `search_query_id` | ✅ | ID поиска |
+| `ste_id` | ✅ | ID карточки |
+| `payload.result_rank` | ⬜ | Позиция в выдаче |
+
+### 17.4 Что означает `queued_profile_recalc` в ответе
+
+```json
+{
+  "accepted": 3,
+  "queued_profile_recalc": true
+}
+```
+
+| Поле | Описание |
+|------|---------|
+| `accepted` | Сколько событий из пакета принято и сохранено. Если `event_id` уже встречался — такое событие пропускается (idempotency), в счётчик не входит. |
+| `queued_profile_recalc` | `true` означает, что среди принятых событий оказались «тяжёлые» сигналы (крупные значения `active_time_ms`, тип `product_view_end` и т.п.), которые дают основание пересчитать персональный профиль заказчика (`customer_preference_profile`). Бэк поставил задачу в очередь BullMQ — worker пересчитает веса в фоне и обновит профиль, следующий поисковый запрос вернёт изменённую выдачу. Если `false` — событий недостаточно для перерасчёта, профиль не трогается. Фронту это поле нужно знать, чтобы при необходимости показать пользователю индикатор «выдача обновляется». |
+
+### 17.5 Когда отправлять пакет
+
+Не нужно ждать накопления N событий. Рекомендуемые триггеры отправки:
+
+1. **При уходе с экрана выдачи** — `search_results_dwell` + `search_submit` (если ещё не ушёл) в одном пакете.
+2. **При уходе с карточки товара** — `product_view_end` в одном пакете.
+3. **По `beforeunload`** / `visibilitychange` → `hidden` — все накопленные, ещё не отправленные события. Использовать `navigator.sendBeacon()` или `fetch({ keepalive: true })`.
+
+Максимальный размер пакета: **50 событий**. Если накопилось больше — разбивать и отправлять последовательно.
+
+### 17.6 Сценарий для демонстрации комиссии
+
+1. **Сессия 1:**
+   - пользователь вводит запрос `Q` → событие `search_submit`;
+   - просматривает выдачу ~50 с → событие `search_results_dwell` (`active_time_ms ≈ 45 000`);
+   - открывает карточку группы A, изучает 70 с → `product_view_end` (`active_time_ms ≈ 65 000`);
+   - возвращается, открывает карточку группы B, быстро закрывает → `product_view_end` (`active_time_ms ≈ 5 000`).
+
+2. **Между сессиями:**
+   - BullMQ worker агрегирует события по `customer_id`;
+   - поднимает вес группы A в `customer_preference_profile`;
+   - опускает вес группы B (quick bounce — отрицательный сигнал).
+
+3. **Сессия 2:**
    - тот же пользователь вводит тот же запрос `Q`;
-   - backend возвращает изменённую выдачу;
-   - группа A поднимается выше;
+   - группа A занимает более высокую позицию в выдаче;
    - группа B опускается ниже.
 
-Для сценария важны различия в `active_time_ms` на карточках/выдаче между сессиями, а не количество промежуточных событий.
+Для сценария важны различия в `active_time_ms` между карточками/сессиями — именно этот сигнал двигает ранжирование.
 
 ---
 

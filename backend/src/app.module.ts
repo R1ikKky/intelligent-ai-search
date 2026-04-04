@@ -13,6 +13,8 @@ import { HealthModule } from './modules/health/health.module';
 import { Product } from './modules/products/entities/product.entity';
 import { UserBehaviorEvent } from './modules/user-behavior/entities/user-behavior-event.entity';
 import { UserProductScore } from './modules/user-behavior/entities/user-product-score.entity';
+import { Customer } from './modules/auth/entities/customer.entity';
+import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
 
 @Module({
   imports: [
@@ -31,7 +33,7 @@ import { UserProductScore } from './modules/user-behavior/entities/user-product-
         username: config.get('postgres.user'),
         password: config.get('postgres.password'),
         database: config.get('postgres.database'),
-        entities: [Product, UserBehaviorEvent, UserProductScore],
+        entities: [Product, UserBehaviorEvent, UserProductScore, Customer, RefreshToken],
         synchronize: config.get('nodeEnv') !== 'production',
         logging: config.get('nodeEnv') === 'development',
       }),
