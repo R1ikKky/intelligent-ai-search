@@ -9,4 +9,7 @@ export class TokenResponseDto {
 
   @ApiProperty()
   role!: string;
+
+  @ApiProperty({ required: false })
+  customerDataId?: string;
 }

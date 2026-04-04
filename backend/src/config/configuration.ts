@@ -15,6 +15,7 @@ export default () => ({
   elasticsearch: {
     node: process.env.ELASTICSEARCH_NODE ?? 'http://localhost:9200',
     index: process.env.ELASTICSEARCH_INDEX ?? 'products',
+    autoReindexOnStart: process.env.AUTO_REINDEX_ON_START === 'true',
   },
   redis: {
     host: process.env.REDIS_HOST ?? 'localhost',

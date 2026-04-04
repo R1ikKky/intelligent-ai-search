@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SearchService } from './search.service';
 import { UserBehaviorService } from '../user-behavior/user-behavior.service';
 import { ELASTICSEARCH_CLIENT } from '../indexing/elasticsearch.provider';
+import { ProfileService } from '../profile/profile.service';
 import { SearchQueryDto } from '../products/dto/search-query.dto';
 
 const mockEsResponse = {
@@ -38,12 +39,16 @@ describe('SearchService', () => {
       getScoreMap: jest.fn().mockResolvedValue(new Map()),
       getCategoryOrderCounts: jest.fn().mockResolvedValue(new Map()),
     };
+    const profileService = {
+      getColdStartCategoryWeights: jest.fn().mockResolvedValue(new Map()),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SearchService,
         { provide: ELASTICSEARCH_CLIENT, useValue: esClient },
         { provide: UserBehaviorService, useValue: behaviorService },
+        { provide: ProfileService, useValue: profileService },
         {
           provide: ConfigService,
           useValue: {

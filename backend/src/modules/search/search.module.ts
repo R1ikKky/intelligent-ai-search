@@ -5,10 +5,11 @@ import { SynonymsService } from './synonyms.service';
 import { SynonymsController } from './synonyms.controller';
 import { SearchController } from './search.controller';
 import { IndexingModule } from '../indexing/indexing.module';
+import { ProfileModule } from '../profile/profile.module';
 import { UserBehaviorModule } from '../user-behavior/user-behavior.module';
 
 @Module({
-  imports: [IndexingModule, UserBehaviorModule],
+  imports: [IndexingModule, UserBehaviorModule, ProfileModule],
   controllers: [SynonymsController, SearchController],
   providers: [SearchService, SuggestService, SynonymsService],
   exports: [SearchService, SuggestService],

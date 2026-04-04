@@ -10,9 +10,22 @@ import { SearchModule } from './modules/search/search.module';
 import { UserBehaviorModule } from './modules/user-behavior/user-behavior.module';
 import { IndexingModule } from './modules/indexing/indexing.module';
 import { HealthModule } from './modules/health/health.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { Product } from './modules/products/entities/product.entity';
 import { UserBehaviorEvent } from './modules/user-behavior/entities/user-behavior-event.entity';
 import { UserProductScore } from './modules/user-behavior/entities/user-product-score.entity';
+import {
+  Customer,
+  CustomerData,
+  CustomerDataColdStart,
+  CustomerPreferenceProfile,
+  CustomerSimilarityEdge,
+  EtlQualityLog,
+  Sale,
+  Ste,
+  SteSupplierStat,
+  Supplier,
+} from './domain/entities';
 
 @Module({
   imports: [
@@ -31,7 +44,21 @@ import { UserProductScore } from './modules/user-behavior/entities/user-product-
         username: config.get('postgres.user'),
         password: config.get('postgres.password'),
         database: config.get('postgres.database'),
-        entities: [Product, UserBehaviorEvent, UserProductScore],
+        entities: [
+          Product,
+          UserBehaviorEvent,
+          UserProductScore,
+          CustomerData,
+          Customer,
+          Supplier,
+          Ste,
+          SteSupplierStat,
+          Sale,
+          CustomerSimilarityEdge,
+          EtlQualityLog,
+          CustomerDataColdStart,
+          CustomerPreferenceProfile,
+        ],
         synchronize: config.get('nodeEnv') !== 'production',
         logging: config.get('nodeEnv') === 'development',
       }),
@@ -53,6 +80,7 @@ import { UserProductScore } from './modules/user-behavior/entities/user-product-
     UserBehaviorModule,
     IndexingModule,
     HealthModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

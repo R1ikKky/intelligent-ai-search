@@ -1,29 +1,9 @@
-version: '3.9'
+# Copy .env.example to .env to override secrets.
+# Данные контейнеров по умолчанию на диске D: (bind mount). Переопределение: DOCKER_VOLUME_ROOT в .env
 
 services:
-  app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - '3000:3000'
-    env_file:
-      - .env
-    environment:
-      POSTGRES_HOST: postgres
-      REDIS_HOST: redis
-      ELASTICSEARCH_NODE: http://elasticsearch:9200
-    depends_on:
-      postgres:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-search_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-search_pass}
@@ -31,12 +11,75 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${DOCKER_VOLUME_ROOT:-D:/docker-data/intelligent-ai-search}/postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-search_user} -d ${POSTGRES_DB:-search_db}']
       interval: 10s
       timeout: 5s
       retries: 5
+
+  schema-init:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-search_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-search_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-search_db}
+    command: ['node', 'dist/scripts/sync-schema.js']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  ml-api:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile.api
+    ports:
+      - '8000:8000'
+    environment:
+      ST_MODEL_NAME: ${ST_MODEL_NAME:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      EMBED_MAX_BATCH: ${EMBED_MAX_BATCH:-128}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-search_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-search_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-search_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - ml
+    restart: unless-stopped
+
+  etl:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-search_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-search_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-search_db}
+      DATA_DIR: /data
+      MANIFEST_PATH: /manifest/datasets.manifest.json
+      ETL_SKIP: ${ETL_SKIP:-1}
+      # Ограниченная выборка для быстрого Docker: полный датасет — ETL_STE_LIMIT=0 ETL_CONTRACT_LIMIT=0
+      ETL_STE_LIMIT: ${ETL_STE_LIMIT:-20000}
+      ETL_CONTRACT_LIMIT: ${ETL_CONTRACT_LIMIT:-8000}
+    volumes:
+      - ./ml/data:/data:ro
+      - ./datasets.manifest.json:/manifest/datasets.manifest.json:ro
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+    restart: 'no'
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
@@ -48,7 +91,7 @@ services:
     ports:
       - '9200:9200'
     volumes:
-      - es_data:/usr/share/elasticsearch/data
+      - ${DOCKER_VOLUME_ROOT:-D:/docker-data/intelligent-ai-search}/elasticsearch:/usr/share/elasticsearch/data
     healthcheck:
       test: ['CMD-SHELL', 'curl -sf http://localhost:9200/_cluster/health | grep -v "\"status\":\"red\"" || exit 1']
       interval: 15s
@@ -72,14 +115,53 @@ services:
     ports:
       - '6379:6379'
     volumes:
-      - redis_data:/data
+      - ${DOCKER_VOLUME_ROOT:-D:/docker-data/intelligent-ai-search}/redis:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 5
 
-volumes:
-  postgres_data:
-  es_data:
-  redis_data:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:3000/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1));",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 120s
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me-in-production-min-32-chars}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-search_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-search_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-search_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ELASTICSEARCH_NODE: http://elasticsearch:9200
+      ELASTICSEARCH_INDEX: ${ELASTICSEARCH_INDEX:-products}
+      AUTO_REINDEX_ON_START: ${AUTO_REINDEX_ON_START:-true}
+      MAX_SCORE: ${MAX_SCORE:-100}
+      BOOST_MAX: ${BOOST_MAX:-2.0}
+    depends_on:
+      etl:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped

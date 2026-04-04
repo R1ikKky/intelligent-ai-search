@@ -4,6 +4,7 @@ import { Request } from 'express';
 export interface JwtPayload {
   sub: string;
   userId: string;
+  customerDataId?: string;
   role: string;
   iat?: number;
   exp?: number;
