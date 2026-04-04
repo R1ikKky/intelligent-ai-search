@@ -107,44 +107,49 @@
 
 | Слой | Технологии | Обоснование |
 |---|---|---|
-| Frontend | Angular 20, Standalone, NgRx Store/Effects/Entity | Соответствует заданному стеку, достаточно для SPA с формами, поиском и состоянием выдачи |
-| Backend API / BFF | Node.js 22, NestJS 11 | Соответствует выбранному стеку, подходит для модульного REST API, фоновых задач и интеграции с ML-сервисом |
-| Основная БД | PostgreSQL 16 в Docker | Основа транзакционных данных, событий и профилей |
-| Расширения Postgres | `pg_trgm`, `unaccent`, `pgcrypto`, `pgvector`, `btree_gin` | Нужны для поиска, исправления опечаток, токенов, векторов и индексов |
-| ML / NLP сервис | Python 3.11, FastAPI, PyTorch, `sentence-transformers`, `pymorphy3` | Лёгкий локальный сервис для эмбеддингов, нормализации и переобучения |
-| Очереди/фоновые задачи | Redis 7 + BullMQ | Более привычный стек для NestJS, проще для фоновых задач, повторных попыток и очередей пересчёта |
-| ETL / аналитика | Python-скрипты | Соответствует требованию анализа датасета |
-| Буферизация клиентских событий | `sendBeacon` + batch POST + optional `localStorage` queue | Достаточно без PWA и service worker |
+| Frontend | React / Next.js, либо Angular 20 Standalone + NgRx | SPA с формами, поиском, dropdown подсказок и состоянием выдачи |
+| Backend API | Node.js 20, NestJS 11, TypeScript strict | Реализован. Модульный REST API, BullMQ workers, интеграция с ES и ML |
+| Основная БД | PostgreSQL 16 в Docker | Транзакционные данные, история продаж, профили, события |
+| Расширения Postgres | `pgvector`, `unaccent`, `pgcrypto`, `btree_gin` | Векторный поиск (`pgvector`), токены (`pgcrypto`). `pg_trgm` и `tsvector` — опционально, если ES недостаточен |
+| Поисковый движок | **Elasticsearch 8.x** (реализован) | Встроенный `russian` analyzer (морфология без плагинов), fuzzy-поиск, phrase suggester. Лучшая альтернатива `pg_trgm+tsvector` для русского языка в рамках хакатона |
+| ML / NLP сервис | Python 3.11, FastAPI, `sentence-transformers`, `pymorphy3` | Генерация эмбеддингов (384d), нормализация, переобучение ranker |
+| Очереди | Redis 7 + BullMQ | Реализован. Асинхронный пересчёт `user_product_score` после каждого события |
+| ETL | Python-скрипты | Загрузка CSV → PostgreSQL → ES индексация |
+| Буферизация событий | `sendBeacon` + `POST /events/bulk` + `localStorage` queue | Batch телеметрия без heartbeat-запросов |
 
-### 5.1 Важное замечание по NestJS
+### 5.1 Текущая структура NestJS (реализовано)
 
-Стек `Angular + NestJS backend` хорошо подходит под задачу хакатона. Рекомендуемая роль NestJS:
+Роль NestJS backend:
+1. REST API — поиск, подсказки, события, Auth.
+2. JWT аутентификация (mock на хакатон, расширяется до real auth).
+3. Обработчики поиска, suggest, bulk-events.
+4. BullMQ workers для async пересчёта профилей.
+5. Интеграция с Python ML service (эмбеддинги, rerank).
+6. Admin/debug endpoints.
 
-1. REST API / BFF.
-2. Аутентификация и управление сессиями.
-3. Обработчики поиска, подсказок и событий.
-4. Планировщики, воркеры и интеграция с Python ML service.
-5. Внутренние admin/debug endpoints при необходимости.
+**Реализованные модули:**
 
-Рекомендуемая модульная структура NestJS:
+| Модуль | Статус | Endpoints |
+|---|---|---|
+| `AuthModule` | ✅ Реализован | `POST /auth/login` |
+| `ProductsModule` | ✅ Реализован | `GET /products/search`, `GET /products/:id`, `POST /products/bulk-import` |
+| `SearchModule` | ✅ Реализован | `POST /search/suggest` |
+| `UserBehaviorModule` | ✅ Реализован | `POST /events/bulk`, `GET /events/scores/:userId` |
+| `IndexingModule` | ✅ Реализован | `POST /indexing/reindex`, `POST /indexing/product/:id` |
+| `HealthModule` | ✅ Реализован | `GET /health` |
+| `SynonymsModule` (в Search) | ✅ Реализован | `POST/GET/DELETE /synonyms` |
 
-1. `AuthModule`
-2. `CustomerModule`
-3. `SearchModule`
-4. `SuggestionModule`
-5. `TelemetryModule`
-6. `ProfileModule`
-7. `DictionaryModule`
-8. `AdminModule`
+**Запланированные модули (нужно дореализовать):**
 
-Рекомендуемый инфраструктурный слой NestJS:
+| Модуль | Статус | Что нужно |
+|---|---|---|
+| `CustomerModule` | 🔲 Нужен | `POST /auth/register` с реальным паролем, привязка к `customer_inn` |
+| `ProfileModule` | 🔲 Нужен | `customer_preference_profile`, cold-start по похожим организациям |
+| `SessionModule` | 🔲 Нужен | Хранение `search_session`, `search_query` для телеметрии |
+| `AdminModule` | 🔲 Опционально | Метрики, просмотр профилей, quality log |
 
-1. `@nestjs/config`
-2. `@nestjs/jwt`
-3. `Passport`
-4. `Class Validator`
-5. `BullMQ`
-6. `Prisma` либо `TypeORM`
+**Инфраструктурный слой (всё уже подключено):**
+`@nestjs/config` + Joi, `@nestjs/jwt` + Passport, `class-validator`, `BullMQ`, `TypeORM` (**TypeORM выбран — §24.1 закрыт**).
 
 ---
 
@@ -152,24 +157,25 @@
 
 ```mermaid
 flowchart LR
-    U[Пользователь] --> A[Angular 20 SPA]
-    A -->|REST/JSON| B[NestJS API / BFF]
-    B --> P[(PostgreSQL 16 + pg_trgm + pgvector)]
-    B --> M[Python FastAPI + PyTorch]
+    U[Пользователь] --> A[Frontend SPA]
+    A -->|REST/JSON| B[NestJS API]
+    B --> E[(Elasticsearch 8.x\nrussian analyzer)]
+    B --> P[(PostgreSQL 16\n+ pgvector)]
+    B --> M[Python FastAPI\nsentence-transformers]
     B --> R[(Redis 7)]
     B --> Q[BullMQ worker]
     Q --> R
     Q --> P
     M --> P
-    A -->|batched events| B
+    A -->|POST /events/bulk| B
 
     subgraph SearchContour[Поисковый контур]
       B --> S1[Нормализация запроса]
-      S1 --> S2[Синонимы и исправление опечаток]
-      S2 --> S3[Лексический recall в Postgres]
-      S3 --> S4[Semantic rerank top-N]
-      S4 --> S5[Персонализация]
-      S5 --> S6[Группировка по производителю/семейству]
+      S1 --> S2[Синонимы + suggest\nES phrase suggester]
+      S2 --> S3[Лексический recall\nES multi-match + fuzziness]
+      S3 --> S4[Semantic rerank top-N\npgvector cosine]
+      S4 --> S5[Персонализация\ncontract + behavior affinity]
+      S5 --> S6[Группировка\nпо производителю/семейству]
     end
 ```
 
@@ -1074,9 +1080,11 @@ time_weight = exp(-days_since_event / 365)
 
 ## 16. Формат запросов между фронтом и беком
 
+> **Примечание:** Backend не использует глобальный `/api` префикс — маршруты начинаются сразу с ресурса (например `POST /auth/login`). Фронтенд должен настроить `baseUrl` в HTTP-клиенте.
+
 ### 16.1 Регистрация
 
-`POST /api/auth/register`
+`POST /auth/register` *(планируется — сейчас: `POST /auth/login` возвращает JWT)*
 
 ```json
 {
@@ -1101,7 +1109,7 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.2 Вход
 
-`POST /api/auth/login`
+`POST /auth/login`
 
 ```json
 {
@@ -1124,7 +1132,7 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.3 Подсказки при вводе
 
-`POST /api/search/suggest`
+`POST /search/suggest`
 
 ```json
 {
@@ -1168,7 +1176,13 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.4 Поиск
 
-`POST /api/search`
+`GET /products/search?q=...&userId=...&page=...&limit=...&category=...`
+
+*(Реализован. GET вместо POST — проще кэшировать на уровне CDN/nginx. Query params соответствуют оригинальному контракту.)*
+
+Для демо с расширенной группировкой используется тот же endpoint с параметром `group_by=manufacturer` (планируется).
+
+Альтернативный POST-вариант для сложных фильтров:
 
 ```json
 {
@@ -1253,7 +1267,7 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.5 Приём событий с фронта
 
-`POST /api/events/bulk`
+`POST /events/bulk` *(реализован)*
 
 ```json
 {
@@ -1308,7 +1322,7 @@ time_weight = exp(-days_since_event / 365)
 
 ### 16.6 Рекомендации при первом входе
 
-`POST /api/recommendations/bootstrap`
+`POST /recommendations/bootstrap` *(планируется — ProfileModule)*
 
 ```json
 {
@@ -1506,60 +1520,57 @@ PyTorch можно использовать для:
 
 ## 22. Упрощённый план реализации
 
-### Этап 1. Данные и БД
+### Этап 1. Данные и БД  `[Backend + ML]`
 
-1. Утвердить логическую модель данных.
-2. Подготовить Docker-образ Postgres 16 с `pg_trgm`, `pgvector`, `unaccent`.
-3. Создать staging и target schema.
-4. Реализовать ETL для `customer_data`, `supplier`, `ste`, `sale`, `ste_supplier_stat`.
-5. Добавить нормализацию `customer_name`, извлечение `org_type_primary` и `org_type_tags`.
-6. Построить `customer_similarity_edge` и стартовые seed-профили по похожим организациям.
-7. Добавить quality-log и дедупликацию.
-8. Поднять Redis для фоновых задач и кэша.
+1. ✅ Логическая модель данных утверждена (§7).
+2. ✅ Docker-compose с Postgres 16, Elasticsearch 8.x, Redis 7 готов.
+3. 🔲 Добавить в образ Postgres расширения `pgvector`, `unaccent`, `pgcrypto`.
+4. 🔲 **ML:** ETL-скрипт: CSV → staging → `customer_data`, `supplier`, `ste`, `sale`, `ste_supplier_stat`.
+5. 🔲 **ML:** Нормализация `customer_name`, извлечение `org_type_primary`, `org_type_tags`.
+6. 🔲 **ML:** Построить `customer_similarity_edge` и seed-профили.
+7. 🔲 **ML:** `etl_quality_log` — аномалии, будущие даты, дубликаты.
+8. ✅ Redis запущен, BullMQ настроен.
 
-### Этап 2. Backend и frontend-скелет
+### Этап 2. Backend и Frontend-скелет  `[Backend + Frontend]`
 
-1. Реализовать в NestJS `register` и `login`.
-2. Создать три формы Angular:
-   - регистрация;
-   - вход;
-   - поиск.
-3. Подключить NgRx для auth/session/search.
-4. Подготовить базовые DTO, guards и модули NestJS.
+1. ✅ **Backend:** `POST /auth/login` (JWT mock). Дополнить: `POST /auth/register` с `customer_inn` + пароль.
+2. ✅ **Backend:** Базовые DTO, guards, модули, глобальный exception filter (RFC 7807).
+3. ✅ **Backend:** `POST /events/bulk` с dwell-based weight upgrade.
+4. 🔲 **Frontend:** Экраны — регистрация, вход, поиск.
+5. 🔲 **Frontend:** State management (NgRx / Zustand) для auth / session / search / telemetryQueue.
 
-### Этап 3. Поисковый MVP
+### Этап 3. Поисковый MVP  `[Backend + Frontend]`
 
-1. Построить `search_text` и `search_vector`.
-2. Сделать endpoint `POST /api/search`.
-3. Сделать endpoint `POST /api/search/suggest`.
-4. Реализовать опечатки, историю запросов и синонимы.
-5. Реализовать группировку по производителю/семейству.
-6. Добавить применение `org_similarity_affinity` для новых пользователей.
-7. Добавить endpoint `POST /api/recommendations/bootstrap` для первого входа.
+1. ✅ **Backend:** `GET /products/search` — ES multi-match + russian analyzer + fuzziness.
+2. ✅ **Backend:** `POST /search/suggest` — ES prefix + spellfix + synonyms expansion.
+3. ✅ **Backend:** `POST/GET/DELETE /synonyms` — CRUD синонимов.
+4. 🔲 **Backend:** Группировка результатов по `manufacturer_name` / `family_cluster` (§13).
+5. 🔲 **Backend:** Endpoint `POST /recommendations/bootstrap` — cold-start рекомендации для первого входа.
+6. 🔲 **Frontend:** Поисковая строка с dropdown подсказок, отрисовка выдачи, блок стартовых рекомендаций.
 
-### Этап 4. Персонализация по контрактам
+### Этап 4. Персонализация по контрактам  `[Backend + ML]`
 
-1. Добавить `customer_preference_profile`.
-2. Добавить веса по закупкам, категориям, поставщикам и атрибутам.
-3. Добавить cold-start prior по похожим организациям.
-4. Подготовить offline-оценку на датасете контрактов.
-5. Подготовить offline-оценку cold-start по названию организации и похожим заказчикам.
+1. 🔲 **Backend:** Entity `customer_preference_profile`.
+2. 🔲 **Backend:** Формула ранжирования §14.7 — `purchase_affinity`, `category_affinity`, `org_similarity_affinity`.
+3. ✅ **Backend:** `user_product_score` агрегируется BullMQ-воркером с 90-day rolling window.
+4. 🔲 **ML:** Оффлайн-скрипт: `HitRate@5`, `NDCG@10`, `MRR@10` на датасете контрактов.
+5. 🔲 **ML:** Оффлайн-скрипт: cold-start `NDCG@10` по похожим организациям.
 
-### Этап 5. Поведенческий feedback loop
+### Этап 5. Поведенческий feedback loop  `[Backend + Frontend]`
 
-1. Реализовать `POST /api/events/bulk`.
-2. Логировать MVP-события: `search_submit`, `search_results_dwell`, `product_view_end` с `dwell_ms` и `active_time_ms` (§17).
-3. Поднять BullMQ job для быстрого пересчёта профиля после событий.
-4. Добавить `behavior_affinity` в ранжирование.
-5. Подготовить сценарий `Session A vs Session B` с одинаковым запросом.
+1. ✅ **Backend:** `POST /events/bulk` принимает `search_results_dwell`, `product_view_end` с `dwell_ms` / `active_time_ms`.
+2. ✅ **Backend:** BullMQ job для пересчёта `user_product_score` после каждого события.
+3. 🔲 **Backend:** `behavior_affinity` в формулу ранжирования §14.7.
+4. 🔲 **Frontend:** Tracking `dwell_ms` + `active_time_ms` (Page Visibility API), отправка при уходе.
+5. 🔲 **Демо:** Сценарий `Session A vs Session B` — одинаковый запрос, разная выдача.
 
-### Этап 6. Семантика и защита
+### Этап 6. Семантика и защита  `[ML + Backend]`
 
-1. Построить embeddings для СТЕ.
-2. Добавить semantic rerank top-N.
-3. Сравнить качество с pure lexical baseline.
-4. Подготовить 3-5 демонстрационных сценариев.
-5. Подготовить BPMN/архитектурную схему и таблицу метрик по §15.0 (MVP), при необходимости дополнить из backlog §15.
+1. 🔲 **ML:** Построить embeddings СТЕ (`multilingual-e5-small` или `paraphrase-multilingual-MiniLM-L12-v2`, 384d).
+2. 🔲 **ML:** FastAPI endpoint `POST /embed` — эмбеддинг запроса.
+3. 🔲 **Backend:** Semantic rerank top-N через `pgvector` cosine similarity.
+4. 🔲 **ML:** Сравнение: lexical baseline vs lexical+personalization vs +semantic.
+5. 🔲 **Demo:** 3-5 сценариев для защиты (§15.9).
 
 ---
 
@@ -1576,15 +1587,76 @@ PyTorch можно использовать для:
 
 ---
 
-## 24. Открытые вопросы на подтверждение
+## 24. Открытые вопросы — статус
 
-1. Какой ORM фиксируем в NestJS: `Prisma` или `TypeORM`?
-2. Допустимо ли для части позиций группировать не по производителю, а по `supplier_fallback`/`family_cluster`, если производитель в данных не найден?
-3. Нужна ли отдельная админ-панель для просмотра поисковых метрик, качества подсказок и профилей пользователей?
+1. ~~Какой ORM фиксируем в NestJS: `Prisma` или `TypeORM`?~~ → **Закрыт: TypeORM.** Уже используется, entity синхронизируются через `synchronize: true` в dev.
+2. Допустимо ли группировать по `supplier_fallback` / `family_cluster`, если производитель не найден? → **Да**, согласно §13 — четырёхуровневая схема обязательна. Backend группирует последовательно по `manufacturer_confidence`.
+3. Нужна ли отдельная админ-панель? → **Нет (MVP).** Swagger UI (`/api`) + `GET /indexing/reindex` + `GET /health` достаточно для хакатона. AdminModule — в backlog.
 
 ---
 
-## 25. Итог
+## 25. Распределение обязанностей по командам
+
+### 25.1 Backend (`backend/`) — NestJS
+
+| Задача | Приоритет | Этап |
+|---|---|---|
+| `POST /auth/register` (customer_inn + пароль, Argon2id) | 🔴 Высокий | 2 |
+| `customer_preference_profile` entity + BullMQ worker | 🔴 Высокий | 4 |
+| Группировка выдачи по manufacturer / family_cluster | 🔴 Высокий | 3 |
+| `POST /recommendations/bootstrap` (cold-start) | 🟡 Средний | 3 |
+| `behavior_affinity` в формулу ранжирования §14.7 | 🟡 Средний | 5 |
+| Semantic rerank через ML-сервис + pgvector | 🟡 Средний | 6 |
+| `search_session` + `search_query` tracking | 🟡 Средний | 3 |
+| Rate limiting на `/auth` и `/products/search` | 🟢 Низкий | MVP |
+| Refresh token | 🟢 Низкий | после MVP |
+
+**Уже реализовано:** Auth (mock JWT), ES search + suggest, bulk events + dwell weights, BullMQ score updates, indexing, health, synonyms CRUD, seeds 500 products.
+
+### 25.2 ML (`ml/`) — Python + FastAPI
+
+| Задача | Приоритет | Этап |
+|---|---|---|
+| ETL: `СТЕ_20260403.csv` → `ste` таблица в Postgres | 🔴 Высокий | 1 |
+| ETL: `Контракты_20260403.csv` → `customer_data`, `supplier`, `sale` | 🔴 Высокий | 1 |
+| Дедупликация, нормализация имён, `etl_quality_log` | 🔴 Высокий | 1 |
+| Построение `ste_supplier_stat`, вычисление `id_supplier` | 🔴 Высокий | 1 |
+| `customer_similarity_edge` — похожие организации | 🔴 Высокий | 1 |
+| Bulk-индексация СТЕ в Elasticsearch (`POST /indexing/reindex`) | 🔴 Высокий | 1 |
+| FastAPI `POST /embed` — эмбеддинг текста (384d) | 🟡 Средний | 6 |
+| Генерация `ste.embedding` для всего каталога | 🟡 Средний | 6 |
+| Оффлайн-метрики: `HitRate@5`, `NDCG@10`, `MRR@10` | 🟡 Средний | 4 |
+| Cold-start скрипт: `org_type_primary`, seed-профили | 🟡 Средний | 4 |
+| Лёгкий reranker (опционально, второй итерации) | 🟢 Низкий | 6 |
+
+**Точки интеграции с backend:**
+- ML пишет `ste.embedding` в Postgres → backend читает для rerank
+- ML пишет `customer_similarity_edge` → backend читает в ProfileModule
+- ML предоставляет `POST /embed` endpoint → backend вызывает при поиске
+
+### 25.3 Frontend (`frontend/`) — React/Next.js или Angular
+
+| Задача | Приоритет | Этап |
+|---|---|---|
+| Экраны: Регистрация, Вход | 🔴 Высокий | 2 |
+| Поисковая строка + autocomplete dropdown | 🔴 Высокий | 3 |
+| Отрисовка результатов (группы по производителю) | 🔴 Высокий | 3 |
+| Telemetry: `dwell_ms` + `active_time_ms` (Page Visibility API) | 🔴 Высокий | 5 |
+| `POST /events/bulk` — отправка при уходе с экрана | 🔴 Высокий | 5 |
+| Блок стартовых рекомендаций (cold-start, первый вход) | 🟡 Средний | 3 |
+| Отображение `corrected_query` / `suggestion` | 🟡 Средний | 3 |
+| Фильтры по категории, региону поставщика | 🟡 Средний | 3 |
+| LocalStorage очередь событий (offline buffer) | 🟢 Низкий | 5 |
+| Объяснение ранжирования (почему этот товар выше) | 🟢 Низкий | 6 |
+
+**Точки интеграции:**
+- `baseUrl` = `http://localhost:3000` (или nginx proxy)
+- Bearer JWT из `POST /auth/login` в заголовок каждого запроса
+- `search_query_id` из ответа `/products/search` → прокидывать в `events/bulk`
+
+---
+
+## 27. Итог
 
 Предложенная архитектура позволяет:
 
