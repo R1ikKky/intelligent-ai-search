@@ -1,6 +1,6 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 import { TelemetryBatchRequest, TelemetryEvent } from '../../../shared/models/telemetry.models';
 
@@ -29,7 +29,8 @@ export class TelemetryApi {
       return of(void 0);
     }
 
-    return this.http.post<unknown>('/events/bulk', this.mapBatch(payload)).pipe(map(() => void 0));
+    // return this.http.post<unknown>('/events/bulk', this.mapBatch(payload)).pipe(map(() => void 0));
+    return of(void 0);
   }
 
   private mapBatch(payload: TelemetryBatchRequest): BackendTelemetryBatchRequest {

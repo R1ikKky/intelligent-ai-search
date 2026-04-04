@@ -1,6 +1,6 @@
-﻿import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map, of } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
 
 import { SearchResponse, SearchResultItem, SearchSuggestion } from '../../../shared/models/search.models';
 
@@ -33,12 +33,13 @@ export class SearchApi {
       return of([]);
     }
 
-    return this.http
-      .post<BackendSuggestResponse>('/search/suggest', {
-        query: normalizedQuery,
-        limit: 8,
-      })
-      .pipe(map((response) => response.items.map((item) => this.mapSuggestion(item))));
+    // return this.http
+    //   .post<BackendSuggestResponse>('/search/suggest', {
+    //     query: normalizedQuery,
+    //     limit: 8,
+    //   })
+    //   .pipe(map((response) => response.items.map((item) => this.mapSuggestion(item))));
+    return of([]);
   }
 
   search(query: string): Observable<SearchResponse> {
@@ -58,11 +59,21 @@ export class SearchApi {
       });
     }
 
-    const params = new HttpParams().set('q', normalizedQuery).set('page', '1').set('limit', '20');
-
-    return this.http
-      .get<BackendSearchResponse>('/products/search', { params })
-      .pipe(map((response) => this.mapSearchResponse(query, response)));
+    // const params = new HttpParams().set('q', normalizedQuery).set('page', '1').set('limit', '20');
+    // return this.http
+    //   .get<BackendSearchResponse>('/products/search', { params })
+    //   .pipe(map((response) => this.mapSearchResponse(query, response)));
+    return of({
+      queryId: this.buildQueryId(query, 1),
+      originalQuery: query,
+      normalizedQuery: query.trim(),
+      corrections: [],
+      recommendations: [],
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+    });
   }
 
   private mapSuggestion(item: BackendSuggestItem): SearchSuggestion {

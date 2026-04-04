@@ -1,5 +1,25 @@
 # Intelligent AI Search
 
+## Запуск и условия
+
+**Команда запуска** (выполнять в каталоге с `docker-compose.yml`):
+
+```bash
+docker compose up --build -d
+```
+
+**Условия запуска:**
+
+- Установлены **Docker** и **Docker Compose** v2, запущен Docker Engine (на Windows — **Docker Desktop**).
+- Свободны порты **5432** (Postgres) и **4200** (веб-фронт в nginx).
+- По желанию: скопируйте `.env.example` в `.env`, чтобы задать `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` и при необходимости **`DOCKER_VOLUME_ROOT`** (по умолчанию том Postgres: `D:/docker-data/intelligent-ai-search/postgres`).
+- **Импорт датасета в Postgres:** в папку **`data/`** положите оба файла **`Контракты_20260403.csv`** и **`СТЕ_20260403.csv`** (разделитель `;`, кодировка UTF-8 с BOM, без строки заголовка — см. [docks/datasets.manifest.json](docks/datasets.manifest.json)). После того как контейнер **postgres** станет healthy, один раз отработает **dataset-loader**. Если CSV нет — в логах будет предупреждение, контейнер завершится с кодом 0, **postgres** и **frontend** продолжают работать без заливки таблиц из этих файлов.
+- Повторить только загрузку в уже поднятую БД: `docker compose up -d postgres`, затем `docker compose run --rm dataset-loader`.
+
+**После успешного старта:** UI — http://localhost:4200 ; Postgres — `localhost:5432` (значения по умолчанию: пользователь `search_user`, БД `search_db`, пароль `search_pass`).
+
+---
+
 Монорепозиторий: **NestJS backend** (поиск в Elasticsearch, персонализация, auth с refresh-cookie), **ML** (ETL CSV → Postgres, эмбеддинги, cold-start), **Docker Compose** для Postgres, Redis, Elasticsearch.
 
 Подробности по ML: [ml/dock/architecture.md](ml/dock/architecture.md). Документация API и модулей backend: [backend/README.md](backend/README.md).

@@ -24,3 +24,25 @@ ml/data/*.csv
 # OS
 .DS_Store
 Thumbs.db
+
+# Local datasets (large CSV)
+data/*.csv
+!data/.gitkeep
+
+# Python (корневой venv)
+venv/
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Django (если кто-то поднимет на SQLite локально)
+db.sqlite3
+
+# IDE
+.idea/

@@ -1,1 +1,0 @@
-{"name":"intelligent-ai-search","version":"1.0.0","type":"commonjs","scripts":{"build":"tsc -p tsconfig.build.json","start":"node dist/main"}}
