@@ -25,10 +25,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(217, 119, 6, 0.12), transparent 30%),
-    radial-gradient(circle at top right, rgba(13, 107, 87, 0.12), transparent 35%),
-    var(--bg);
+  background: #dce6f0;
   color: var(--text);
 }
 

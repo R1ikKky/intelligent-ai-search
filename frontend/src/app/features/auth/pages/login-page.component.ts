@@ -1,15 +1,14 @@
-﻿import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { SectionCardComponent } from '../../../shared/ui/section-card/section-card.component';
 import { AuthFacade } from '../data-access/auth.facade';
 
 @Component({
   standalone: true,
   selector: 'app-login-page',
-  imports: [AsyncPipe, ReactiveFormsModule, RouterLink, SectionCardComponent],
+  imports: [AsyncPipe, ReactiveFormsModule, RouterLink],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,18 +19,22 @@ export class LoginPageComponent {
 
   readonly loading$ = this.authFacade.loading$;
   readonly error$ = this.authFacade.error$;
+  readonly showPassword = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     customerInn: ['', [Validators.required]],
     password: ['', [Validators.required]],
   });
 
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
-
     this.authFacade.login(this.form.getRawValue());
   }
 }
