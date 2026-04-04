@@ -2,7 +2,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { TokenStorageService } from '../../../core/services/token-storage.service';
 import { AuthApi } from '../data-access/auth.api';
@@ -94,6 +94,18 @@ export class AuthEffects {
         }),
       ),
     { dispatch: false },
+  );
+
+  readonly fetchProfile$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.authSucceeded, AuthActions.accessTokenRefreshed),
+      switchMap(() =>
+        this.authApi.me().pipe(
+          map((profile) => AuthActions.profileLoaded({ profile })),
+          catchError(() => EMPTY),
+        ),
+      ),
+    ),
   );
 
   readonly navigateAfterLogout$ = createEffect(

@@ -1,7 +1,21 @@
 ﻿export interface AuthIdentity {
   readonly customerId: string;
-  readonly customerDataId: string;
   readonly login: string;
+}
+
+export interface UserProfile {
+  readonly userId: number;
+  readonly customerInn: string;
+  readonly login: string;
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly isActive: boolean;
+  readonly isStaff: boolean;
+  readonly dateJoined: string;
+  readonly lastLogin: string | null;
+  readonly customerName: string | null;
+  readonly customerRegion: string | null;
 }
 
 export interface RegisterRequest {
