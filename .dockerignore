@@ -1,6 +1,23 @@
-node_modules
-dist
+# Сборка context: корень репозитория — не отправлять тяжёлые/лишние каталоги демону Docker.
+
+# Датасеты (сотни МБ–ГБ) — монтируются в dataset-loader через volumes, в образ api не нужны
+data/
+
+# Локальный venv
+venv/
+.venv/
+
+# Фронт (отдельный образ)
+frontend/node_modules/
+frontend/dist/
+
+# Прочее
+node_modules/
+dist/
+.git/
+.cursor/
+**/__pycache__/
+*.pyc
 .env
-coverage
+coverage/
 *.spec.ts
-.git

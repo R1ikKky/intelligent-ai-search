@@ -1,6 +1,6 @@
 ﻿import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-import { SearchResponse, SearchResultItem } from '../../../shared/models/search.models';
+import { SearchResponse, SearchResultItem, SteCardItem } from '../../../shared/models/search.models';
 import { SectionCardComponent } from '../../../shared/ui/section-card/section-card.component';
 
 @Component({
@@ -17,5 +17,19 @@ export class ResultsGroupListComponent {
 
   selectItem(item: SearchResultItem): void {
     this.itemSelected.emit(item);
+  }
+
+  steToResultItem(it: SteCardItem): SearchResultItem {
+    return {
+      id: it.steId,
+      externalId: it.steId,
+      name: it.name,
+      description: it.attributes,
+      category: it.category,
+      unit: '',
+      score: it.score,
+      personalizedScore: it.score,
+      isPersonalized: false,
+    };
   }
 }

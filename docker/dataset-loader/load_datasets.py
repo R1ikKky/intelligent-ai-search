@@ -42,13 +42,14 @@ def connect() -> psycopg.Connection:
     )
 
 
+def _repair_customer_schema_sql() -> str:
+    path = Path(__file__).resolve().parent / "repair_customer_schema.sql"
+    return path.read_text(encoding="utf-8")
+
+
 def ensure_schema(cur: psycopg.Cursor) -> None:
+    cur.execute(_repair_customer_schema_sql())
     stmts = [
-        """CREATE TABLE IF NOT EXISTS customer (
-            customer_inn TEXT PRIMARY KEY,
-            customer_name TEXT,
-            customer_region TEXT
-        );""",
         """CREATE TABLE IF NOT EXISTS supplier (
             supplier_inn TEXT PRIMARY KEY,
             supplier_name TEXT,

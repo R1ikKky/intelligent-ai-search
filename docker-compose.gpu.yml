@@ -1,0 +1,24 @@
+# Опционально: GPU для сервиса api (NVIDIA + nvidia-container-toolkit).
+# Сборка и запуск:
+#   set ENABLE_CUDA_TORCH=1
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+#
+# Linux: установите NVIDIA Container Toolkit.
+# Windows: Docker Desktop + WSL2 с поддержкой GPU.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: beckend/Dockerfile
+      args:
+        ENABLE_CUDA_TORCH: "1"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

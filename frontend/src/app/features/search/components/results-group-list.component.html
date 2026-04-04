@@ -6,22 +6,52 @@
       <p class="meta">Correction: {{ data.correctedQuery }}</p>
     }
 
-    <ul class="result-list">
-      @for (item of data.items; track item.id) {
-        <li class="result-card">
-          <button type="button" (click)="selectItem(item)">
-            <strong>{{ item.name }}</strong>
-            <span>{{ item.category }}</span>
-            @if (item.description) {
-              <small>{{ item.description }}</small>
+    @if (data.cards && data.cards.length > 0) {
+      <ul class="result-list">
+        @for (card of data.cards; track $index) {
+          <li class="result-card card-group">
+            @if (card.manufacturer) {
+              <h4 class="mfr">{{ card.manufacturer.name }}</h4>
+            } @else {
+              <h4 class="mfr is-muted">Высокое совпадение (производитель скрыт)</h4>
             }
-            <span>Score: {{ item.score }} | Personalized: {{ item.personalizedScore }}</span>
-          </button>
-        </li>
-      } @empty {
-        <li class="result-card is-empty">Nothing found for this query.</li>
-      }
-    </ul>
+            <ul class="nested">
+              @for (it of card.items; track it.steId) {
+                <li>
+                  <button type="button" (click)="selectItem(steToResultItem(it))">
+                    <strong>{{ it.name }}</strong>
+                    <span>{{ it.category }}</span>
+                    @if (it.attributes) {
+                      <small>{{ it.attributes }}</small>
+                    }
+                    <span>Score: {{ it.score }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          </li>
+        } @empty {
+          <li class="result-card is-empty">Nothing found for this query.</li>
+        }
+      </ul>
+    } @else {
+      <ul class="result-list">
+        @for (item of data.items; track item.id) {
+          <li class="result-card">
+            <button type="button" (click)="selectItem(item)">
+              <strong>{{ item.name }}</strong>
+              <span>{{ item.category }}</span>
+              @if (item.description) {
+                <small>{{ item.description }}</small>
+              }
+              <span>Score: {{ item.score }} | Personalized: {{ item.personalizedScore }}</span>
+            </button>
+          </li>
+        } @empty {
+          <li class="result-card is-empty">Nothing found for this query.</li>
+        }
+      </ul>
+    }
   } @else {
     <p class="meta">Search results will render here.</p>
   }

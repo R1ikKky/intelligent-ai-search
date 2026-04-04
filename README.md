@@ -11,12 +11,69 @@ docker compose up --build -d
 **Условия запуска:**
 
 - Установлены **Docker** и **Docker Compose** v2, запущен Docker Engine (на Windows — **Docker Desktop**).
-- Свободны порты **5432** (Postgres) и **4200** (веб-фронт в nginx).
+- Свободны порты **5432** (Postgres), **9200** (Elasticsearch) и **4200** (веб-фронт в nginx).
 - По желанию: скопируйте `.env.example` в `.env`, чтобы задать `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` и при необходимости **`DOCKER_VOLUME_ROOT`** (по умолчанию том Postgres: `D:/docker-data/intelligent-ai-search/postgres`).
 - **Импорт датасета в Postgres:** в папку **`data/`** положите оба файла **`Контракты_20260403.csv`** и **`СТЕ_20260403.csv`** (разделитель `;`, кодировка UTF-8 с BOM, без строки заголовка — см. [docks/datasets.manifest.json](docks/datasets.manifest.json)). После того как контейнер **postgres** станет healthy, один раз отработает **dataset-loader**. Если CSV нет — в логах будет предупреждение, контейнер завершится с кодом 0, **postgres** и **frontend** продолжают работать без заливки таблиц из этих файлов.
 - Повторить только загрузку в уже поднятую БД: `docker compose up -d postgres`, затем `docker compose run --rm dataset-loader`.
+- **Поиск СТЕ:** сервис **api** ждёт готовый Elasticsearch. После того как в Postgres залиты `ste_data` / `history_contract`, один раз выполните индексацию:  
+  `docker compose exec api python manage.py rebuild_ste_index`  
+  (первый запуск скачает веса sentence-transformers — может занять время и трафик).
+
+- Ускорение эмбеддингов на **GPU** (опционально) — см. раздел **«GPU и эмбеддинги (поиск СТЕ)»** ниже.
 
 **После успешного старта:** UI — http://localhost:4200 ; документация API — [Swagger UI (OpenAPI)](http://localhost:3000/schema/swagger-ui/) ; Postgres — `localhost:5432` (значения по умолчанию: пользователь `search_user`, БД `search_db`, пароль `search_pass`).
+
+## GPU и эмбеддинги (поиск СТЕ)
+
+Семантический поиск использует **sentence-transformers** и **PyTorch**. По умолчанию используется **CPU**; если на машине есть подходящий ускоритель, его можно задействовать автоматически или явно.
+
+### Как выбирается устройство
+
+В коде ([`beckend/ste_search/embedding.py`](beckend/ste_search/embedding.py)) порядок такой:
+
+1. **NVIDIA CUDA** — если `torch.cuda.is_available()`.
+2. **Apple MPS** — если доступен `torch.backends.mps` (Apple Silicon).
+3. Иначе **CPU**.
+
+Переменная окружения **`STE_EMBEDDING_DEVICE`** переопределяет режим: `auto` (по умолчанию), `cuda`, `mps`, `cpu`. Если указано `cuda` или `mps`, а устройства нет, в лог пишется предупреждение и используется CPU.
+
+### Локально (venv, без Docker)
+
+После `pip install -r requirements.txt` обычно ставится **CPU-сборка torch**, и GPU **не** используется, пока не установить PyTorch с CUDA.
+
+1. Подберите команду установки на [официальной странице PyTorch](https://pytorch.org/get-started/locally/) под вашу ОС и версию CUDA.
+2. Пример для CUDA 12.4 (Windows/Linux, после установки остальных зависимостей):
+
+   ```bash
+   pip install torch --index-url https://download.pytorch.org/whl/cu124
+   ```
+
+3. Запустите API как обычно; при доступной CUDA модель эмбеддингов загрузится на GPU (в логах будет `device=cuda`).
+
+Подробности см. в комментарии к [`requirements.txt`](requirements.txt).
+
+### Docker (контейнер `api`)
+
+- Обычный запуск (`docker compose up --build`) собирает образ **без** CUDA torch (`ENABLE_CUDA_TORCH=0` по умолчанию) — эмбеддинги в контейнере на **CPU**.
+- Для **NVIDIA GPU**:
+  1. Установите драйвер NVIDIA и **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**. На Windows: **Docker Desktop** и **WSL2** с поддержкой GPU.
+  2. Поднимите стек с дополнительным файлом compose (пересборка образа **api** с PyTorch CUDA):
+
+     ```bash
+     docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build -d
+     ```
+
+  Файл [`docker-compose.gpu.yml`](docker-compose.gpu.yml) задаёт сборку **`beckend/Dockerfile`** с аргументом **`ENABLE_CUDA_TORCH=1`** (переустановка torch с индексом cu124), переменную **`NVIDIA_VISIBLE_DEVICES=all`** и резервирование GPU для сервиса **api**.
+
+- При необходимости можно задать в **`.env`**: `ENABLE_CUDA_TORCH=1` и собирать образ одной командой `docker compose build api`, если в [`docker-compose.yml`](docker-compose.yml) в `build.args` пробрасывается эта переменная (см. текущий compose).
+
+### Полезные переменные (см. также [.env.example](.env.example))
+
+| Переменная | Назначение |
+|------------|------------|
+| `STE_EMBEDDING_DEVICE` | `auto` / `cuda` / `mps` / `cpu` |
+| `STE_EMBEDDING_MODEL` | Имя модели sentence-transformers |
+| `ENABLE_CUDA_TORCH` | Для сборки Docker-образа api: `1` — поставить torch с CUDA в Dockerfile |
 
 ---
 
@@ -129,10 +186,22 @@ python -m etl.validate_dataset
 
 Переменные `DATA_DIR`, `MANIFEST_PATH`, `ETL_STE_LIMIT`, `ETL_CONTRACT_LIMIT` — как у ETL (см. [ml/dock/architecture.md](ml/dock/architecture.md)).
 
+## Сборка Docker: `EOF` / `rpc error ... Unavailable`
+
+Сообщение вроде `target api: failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF` чаще всего означает не баг приложения, а **обрыв связи с Docker** или **нехватку ресурсов** на шаге долгого `pip install` (torch, sentence-transformers и т.д.).
+
+Что сделать:
+
+1. **Уменьшить контекст сборки** — в корне репозитория есть [`.dockerignore`](.dockerignore): каталог **`data/`** с большими CSV **не должен** попадать в context образа `api` (раньше это могло грузить гигабайты на каждый `docker compose build` и приводить к таймауту/EOF). Пересоберите: `docker compose build api`.
+2. **Docker Desktop → Settings → Resources**: увеличьте **Memory** (например 8–12 GB), **Disk** при необходимости; перезапустите Docker.
+3. Соберите только **api** отдельно: `docker compose build api`, затем остальное — `docker compose build`.
+4. Повторите сборку после `wsl --shutdown` (если backend WSL2) и перезапуска Docker Desktop.
+5. Если падение стабильно на одном слое — временно отключите BuildKit: `set DOCKER_BUILDKIT=0` и снова `docker compose build`.
+
 ## Полезные команды
 
 - Остановка: `docker compose down`
-- Логи app: `docker compose logs -f app`
+- Логи API: `docker compose logs -f api`
 - Повторная индексация СТЕ в ES (если API уже запущен): `POST /indexing/reindex` (см. [Swagger UI](http://localhost:3000/schema/swagger-ui/)).
 
 ## Переменные окружения

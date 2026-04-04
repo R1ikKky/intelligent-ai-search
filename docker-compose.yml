@@ -37,10 +37,33 @@ services:
         condition: service_healthy
     restart: "no"
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - '9200:9200'
+    volumes:
+      - ${DOCKER_VOLUME_ROOT:-D:/docker-data/intelligent-ai-search}/elasticsearch:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl -s -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s || exit 1',
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+
   api:
     build:
       context: .
       dockerfile: beckend/Dockerfile
+      args:
+        ENABLE_CUDA_TORCH: ${ENABLE_CUDA_TORCH:-0}
     ports:
       - '3000:8000'
     environment:
@@ -55,8 +78,11 @@ services:
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://elasticsearch:9200}
     depends_on:
       postgres:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
     restart: unless-stopped
   frontend:
