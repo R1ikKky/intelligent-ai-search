@@ -8,20 +8,21 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { Customer } from '../../domain/entities/customer.entity';
 import { CustomerData } from '../../domain/entities/customer-data.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Customer, CustomerData]),
+    TypeOrmModule.forFeature([Customer, CustomerData, RefreshToken]),
     ProfileModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('jwt.secret') ?? 'secret',
+        secret: config.get<string>('jwt.accessSecret') ?? 'access-secret',
         signOptions: {
-          expiresIn: (config.get<string>('jwt.expiresIn') ?? '1d') as
+          expiresIn: (config.get<string>('jwt.accessExpiresIn') ?? '15m') as
             | `${number}${'s' | 'm' | 'h' | 'd'}`
             | undefined,
         },

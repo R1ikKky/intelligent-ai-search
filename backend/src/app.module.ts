@@ -26,6 +26,7 @@ import {
   SteSupplierStat,
   Supplier,
 } from './domain/entities';
+import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import {
           EtlQualityLog,
           CustomerDataColdStart,
           CustomerPreferenceProfile,
+          RefreshToken,
         ],
         synchronize: config.get('nodeEnv') !== 'production',
         logging: config.get('nodeEnv') === 'development',

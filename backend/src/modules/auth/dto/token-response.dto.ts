@@ -1,15 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class TokenResponseDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'JWT access token' })
   accessToken!: string;
 
-  @ApiProperty()
-  userId!: string;
+  @ApiProperty({ description: 'UUID учётной записи (customer.id)' })
+  customerId!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '7701234567', description: 'ИНН (login)' })
+  login!: string;
+
+  @ApiProperty({ example: 'buyer' })
   role!: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, description: 'ИНН организации в customer_data (ключ ETL)' })
   customerDataId?: string;
 }

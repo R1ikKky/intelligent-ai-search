@@ -3,15 +3,10 @@ import { Type } from 'class-transformer';
 import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class SearchQueryDto {
-  @ApiProperty({ description: 'Search query string' })
+  @ApiProperty({ description: 'Поисковый запрос' })
   @IsString()
   @IsNotEmpty()
   q!: string;
-
-  @ApiPropertyOptional({ description: 'User ID for personalization' })
-  @IsOptional()
-  @IsString()
-  userId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -28,8 +23,8 @@ export class SearchQueryDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Фильтр по региону заказчика' })
   @IsOptional()
   @IsString()
-  category?: string;
+  region?: string;
 }
