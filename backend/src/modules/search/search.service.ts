@@ -4,6 +4,7 @@ import { Client } from '@elastic/elasticsearch';
 import type { SearchResponse } from '@elastic/elasticsearch/lib/api/types';
 import { ELASTICSEARCH_CLIENT } from '../indexing/elasticsearch.provider';
 import { UserBehaviorService } from '../user-behavior/user-behavior.service';
+import { ProfileService } from '../profile/profile.service';
 import { SearchQueryDto } from '../products/dto/search-query.dto';
 import { SearchResponseDto, SearchResultItemDto } from '../products/dto/product.dto';
 
@@ -29,6 +30,7 @@ export class SearchService {
     @Inject(ELASTICSEARCH_CLIENT) private readonly esClient: Client,
     private readonly configService: ConfigService,
     private readonly behaviorService: UserBehaviorService,
+    private readonly profileService: ProfileService,
   ) {
     this.index = this.configService.get<string>('elasticsearch.index') ?? 'products';
     this.maxScore = this.configService.get<number>('personalization.maxScore') ?? 100;
@@ -125,9 +127,10 @@ export class SearchService {
     userId: string,
   ): Promise<SearchResultItemDto[]> {
     const productIds = hits.map((h) => h._source!.id);
-    const [scoreMap, categoryBoosts] = await Promise.all([
+    const [scoreMap, categoryBoosts, coldCat] = await Promise.all([
       this.behaviorService.getScoreMap(userId, productIds),
       this.behaviorService.getCategoryOrderCounts(userId),
+      this.profileService.getColdStartCategoryWeights(userId),
     ]);
 
     return hits.map((hit) => {
@@ -140,8 +143,11 @@ export class SearchService {
       );
       const categoryOrders = categoryBoosts.get(src.category) ?? 0;
       const catBoost = categoryOrders > 3 ? 0.3 : 0;
-      const personalizedScore = esScore * (1 + personalizationBoost + catBoost);
-      const isPersonalized = userScore > 0 || categoryOrders > 3;
+      const coldW = coldCat.get(src.category) ?? 0;
+      const coldBoost = coldW > 0 ? Math.min(coldW * 0.12, 0.12) : 0;
+      const personalizedScore = esScore * (1 + personalizationBoost + catBoost + coldBoost);
+      const isPersonalized =
+        userScore > 0 || categoryOrders > 3 || coldBoost > 0;
 
       return this.hitToDto(src, esScore, personalizedScore, isPersonalized);
     });
