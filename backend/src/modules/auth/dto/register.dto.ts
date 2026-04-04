@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
@@ -6,9 +6,9 @@ import {
   Matches,
   MinLength,
   MaxLength,
-  IsOptional,
 } from 'class-validator';
 
+/** Контракт как на feature/backend; при новом заказчике создаётся строка customer_data. */
 export class RegisterDto {
   @ApiProperty({ example: '7701234567', description: 'ИНН заказчика (10 или 12 цифр)' })
   @IsString()
@@ -23,21 +23,15 @@ export class RegisterDto {
   @MaxLength(72)
   password!: string;
 
-  @ApiPropertyOptional({
-    example: 'ООО Ромашка',
-    description: 'Название организации (если нет строки в customer_data после ETL)',
-  })
-  @IsOptional()
+  @ApiProperty({ example: 'ООО Ромашка', description: 'Название организации' })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(255)
-  orgName?: string;
+  orgName!: string;
 
-  @ApiPropertyOptional({
-    example: 'Москва',
-    description: 'Регион / город (если нет в customer_data)',
-  })
-  @IsOptional()
+  @ApiProperty({ example: 'Москва', description: 'Регион / город заказчика' })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(255)
-  location?: string;
+  location!: string;
 }

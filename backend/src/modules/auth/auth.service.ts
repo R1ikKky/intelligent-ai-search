@@ -6,9 +6,9 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, QueryFailedError } from 'typeorm';
 import { Request, Response } from 'express';
-import * as argon2 from 'argon2';
+import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
@@ -19,6 +19,7 @@ import { ProfileService } from '../profile/profile.service';
 
 const REFRESH_COOKIE = 'refreshToken';
 const REFRESH_EXPIRES_MS = 30 * 24 * 60 * 60 * 1000;
+const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class AuthService {
@@ -36,46 +37,19 @@ export class AuthService {
     private readonly profileService: ProfileService,
   ) {}
 
-  private buildAccessPayload(customer: Customer) {
-    return {
-      sub: customer.id,
-      userId: customer.id,
-      customerDataId: customer.customerDataId,
-      role: 'buyer',
-    };
-  }
-
-  private signAccessToken(customer: Customer): string {
-    const expiresIn = (this.configService.get<string>('jwt.accessExpiresIn') ?? '15m') as
-      | `${number}${'s' | 'm' | 'h' | 'd'}`
-      | undefined;
-    return this.jwtService.sign(this.buildAccessPayload(customer), {
-      secret: this.configService.get<string>('jwt.accessSecret'),
-      expiresIn,
-    });
-  }
-
-  private signRefreshToken(customerId: string): string {
-    const expiresIn = (this.configService.get<string>('jwt.refreshExpiresIn') ?? '30d') as
+  private signToken(customerId: string, type: 'access' | 'refresh'): string {
+    const expiresIn = (this.configService.get<string>(
+      `jwt.${type}ExpiresIn`,
+    ) ?? (type === 'access' ? '15m' : '30d')) as
       | `${number}${'s' | 'm' | 'h' | 'd'}`
       | undefined;
     return this.jwtService.sign(
       { sub: customerId },
       {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
+        secret: this.configService.get<string>(`jwt.${type}Secret`),
         expiresIn,
       },
     );
-  }
-
-  private buildTokenResponse(customer: Customer, accessToken: string): TokenResponseDto {
-    return {
-      accessToken,
-      customerId: customer.id,
-      login: customer.login,
-      role: 'buyer',
-      customerDataId: customer.customerDataId,
-    };
   }
 
   async register(
@@ -92,13 +66,11 @@ export class AuthService {
     let data = await this.customerDataRepo.findOne({ where: { id: inn } });
     const now = new Date();
     if (!data) {
-      const name = dto.orgName?.trim() || `Заказчик ИНН ${inn}`;
-      const region = dto.location?.trim() || '';
       data = this.customerDataRepo.create({
         id: inn,
-        customerName: name,
+        customerName: dto.orgName,
         customerNameNormalized: inn,
-        customerRegion: region,
+        customerRegion: dto.location,
         orgTypePrimary: null,
         orgTypeTags: [],
         nameVariants: {},
@@ -108,17 +80,24 @@ export class AuthService {
       await this.customerDataRepo.save(data);
     }
 
-    const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
-    const customer = this.customerRepo.create({
-      customerDataId: inn,
-      login: inn,
-      passwordHash,
-      status: 'active',
-    });
-    await this.customerRepo.save(customer);
-
-    await this.profileService.syncColdStartFromOrg(customer.id, customer.customerDataId);
-    return this.issueSession(customer, req, res);
+    try {
+      const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      const customer = await this.customerRepo.save(
+        this.customerRepo.create({
+          customerDataId: inn,
+          login: inn,
+          passwordHash,
+          status: 'active',
+        }),
+      );
+      await this.profileService.syncColdStartFromOrg(customer.id, customer.customerDataId);
+      return this.issueSession(customer, req, res);
+    } catch (err) {
+      if (err instanceof QueryFailedError && (err as { code?: string }).code === '23505') {
+        throw new ConflictException('Учётная запись с таким ИНН уже существует');
+      }
+      throw err;
+    }
   }
 
   async login(
@@ -126,7 +105,9 @@ export class AuthService {
     req: Request,
     res: Response,
   ): Promise<TokenResponseDto> {
-    const customer = await this.customerRepo.findOne({ where: { login: dto.inn } });
+    const customer = await this.customerRepo.findOne({
+      where: { login: dto.inn },
+    });
     if (!customer) {
       throw new UnauthorizedException('Неверный ИНН или пароль');
     }
@@ -134,16 +115,17 @@ export class AuthService {
       throw new UnauthorizedException('Учётная запись заблокирована');
     }
 
-    const ok = await argon2.verify(customer.passwordHash, dto.password);
-    if (!ok) {
+    const passwordMatch = await bcrypt.compare(dto.password, customer.passwordHash);
+    if (!passwordMatch) {
       throw new UnauthorizedException('Неверный ИНН или пароль');
     }
 
-    customer.lastLoginAt = new Date();
-    await this.customerRepo.save(customer);
+    const [tokenResponse] = await Promise.all([
+      this.issueSession(customer, req, res),
+      this.customerRepo.update(customer.id, { lastLoginAt: new Date() }),
+    ]);
     await this.profileService.syncColdStartFromOrg(customer.id, customer.customerDataId);
-
-    return this.issueSession(customer, req, res);
+    return tokenResponse;
   }
 
   async refresh(req: Request, res: Response): Promise<{ accessToken: string }> {
@@ -165,17 +147,9 @@ export class AuthService {
         throw new UnauthorizedException('Refresh token недействителен или истёк');
       }
 
-      const customer = await qr.manager.findOne(Customer, {
-        where: { id: stored.customerId },
-      });
-      if (!customer) {
-        res.clearCookie(REFRESH_COOKIE);
-        throw new UnauthorizedException('Пользователь не найден');
-      }
-
       await qr.manager.delete(RefreshToken, { id: stored.id });
 
-      const newRefresh = this.signRefreshToken(stored.customerId);
+      const newRefresh = this.signToken(stored.customerId, 'refresh');
       const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_MS);
       const newToken = qr.manager.create(RefreshToken, {
         token: newRefresh,
@@ -188,7 +162,7 @@ export class AuthService {
       await qr.commitTransaction();
 
       this.setRefreshCookie(res, newRefresh);
-      const accessToken = this.signAccessToken(customer);
+      const accessToken = this.signToken(stored.customerId, 'access');
       return { accessToken };
     } catch (err) {
       await qr.rollbackTransaction();
@@ -211,8 +185,8 @@ export class AuthService {
     req: Request,
     res: Response,
   ): Promise<TokenResponseDto> {
-    const accessToken = this.signAccessToken(customer);
-    const refreshToken = this.signRefreshToken(customer.id);
+    const accessToken = this.signToken(customer.id, 'access');
+    const refreshToken = this.signToken(customer.id, 'refresh');
     const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_MS);
 
     await this.refreshTokenRepo.save(
@@ -225,7 +199,8 @@ export class AuthService {
     );
 
     this.setRefreshCookie(res, refreshToken);
-    return this.buildTokenResponse(customer, accessToken);
+
+    return { accessToken, customerId: customer.id, login: customer.login };
   }
 
   private extractClientMeta(req: Request): { userAgent: string | null; ip: string | null } {

@@ -87,7 +87,8 @@ export class ProfileService {
   }
 
   async bootstrap(user: JwtPayload): Promise<BootstrapResponseDto> {
-    const customer = await this.customerRepo.findOne({ where: { id: user.userId } });
+    const customerId = user.sub;
+    const customer = await this.customerRepo.findOne({ where: { id: customerId } });
     if (!customer) {
       throw new NotFoundException('Customer not found');
     }

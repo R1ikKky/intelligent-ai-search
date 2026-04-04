@@ -1,11 +1,13 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 
+/**
+ * Access JWT содержит только `{ sub: customerId }` (как на feature/backend).
+ * В `validate` стратегии дублируем в userId для кода, ожидающего userId.
+ */
 export interface JwtPayload {
   sub: string;
   userId: string;
-  customerDataId?: string;
-  role: string;
   iat?: number;
   exp?: number;
 }
