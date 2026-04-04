@@ -1,0 +1,21 @@
+﻿<div class="search-page">
+  <app-search-toolbar
+    [query]="currentQuery()"
+    [loading]="(loading$ | async) ?? false"
+    (queryChanged)="onQueryChanged($event)"
+    (searchSubmitted)="onSearchSubmitted($event)"
+  />
+
+  @if (error$ | async; as error) {
+    <p class="search-page__error">{{ error }}</p>
+  }
+
+  <section class="search-page__grid">
+    <app-search-suggestions
+      [suggestions]="(suggestions$ | async) ?? []"
+      (suggestionSelected)="onSuggestionSelected($event)"
+    />
+  </section>
+
+  <app-results-group-list [response]="response$ | async" (itemSelected)="onResultSelected($event)" />
+</div>

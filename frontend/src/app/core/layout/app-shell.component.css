@@ -1,0 +1,49 @@
+.shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.shell__header {
+  max-width: var(--content-width);
+  margin: 0 auto 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+}
+
+.shell__eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+}
+
+.shell__header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.shell__nav {
+  display: flex;
+  gap: 12px;
+}
+
+.shell__nav a {
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.shell__nav a.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.shell__content {
+  max-width: var(--content-width);
+  margin: 0 auto;
+}

@@ -122,6 +122,17 @@ services:
       timeout: 3s
       retries: 5
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '4200:80'
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
   app:
     build:
       context: ./backend

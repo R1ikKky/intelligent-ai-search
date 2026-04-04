@@ -1,0 +1,17 @@
+﻿<div class="shell">
+  <header class="shell__header">
+    <div>
+      <p class="shell__eyebrow">Tender Search</p>
+      <h1>Frontend integration layer</h1>
+    </div>
+
+    <nav class="shell__nav">
+      <a routerLink="/search" routerLinkActive="is-active">Search</a>
+      <button type="button" (click)="logout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="shell__content">
+    <router-outlet />
+  </main>
+</div>

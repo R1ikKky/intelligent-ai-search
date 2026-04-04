@@ -1,0 +1,34 @@
+﻿<div class="auth-page">
+  <app-section-card title="Registration" eyebrow="Auth">
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label>
+        <span>Customer INN</span>
+        <input type="text" formControlName="customerInn" />
+      </label>
+
+      <label>
+        <span>Customer name</span>
+        <input type="text" formControlName="customerName" />
+      </label>
+
+      <label>
+        <span>Customer region</span>
+        <input type="text" formControlName="customerRegion" />
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input type="password" formControlName="password" />
+      </label>
+
+      @if (error$ | async; as error) {
+        <p class="auth-form__error">{{ error }}</p>
+      }
+
+      <div class="auth-form__actions">
+        <button type="submit" [disabled]="(loading$ | async) ?? false">Create account</button>
+        <a routerLink="/auth/login">Already have an account</a>
+      </div>
+    </form>
+  </app-section-card>
+</div>

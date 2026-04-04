@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Client } from '@elastic/elasticsearch';
-import type { SearchResponse } from '@elastic/elasticsearch/lib/api/types';
+import { Client, estypes } from '@elastic/elasticsearch';
 import { ELASTICSEARCH_CLIENT } from '../indexing/elasticsearch.provider';
 import { UserBehaviorService } from '../user-behavior/user-behavior.service';
 import { ProfileService } from '../profile/profile.service';
@@ -99,7 +98,7 @@ export class SearchService {
   }
 
   private extractSuggestion(
-    response: SearchResponse<ProductDoc>,
+    response: estypes.SearchResponse<ProductDoc>,
     originalQuery: string,
   ): string | null {
     try {
@@ -123,7 +122,7 @@ export class SearchService {
   }
 
   private async applyPersonalization(
-    hits: SearchResponse<ProductDoc>['hits']['hits'],
+    hits: estypes.SearchResponse<ProductDoc>['hits']['hits'],
     userId: string,
   ): Promise<SearchResultItemDto[]> {
     const productIds = hits.map((h) => h._source!.id);

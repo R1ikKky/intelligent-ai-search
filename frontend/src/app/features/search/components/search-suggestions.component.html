@@ -1,0 +1,12 @@
+﻿<ul class="suggestions">
+  @for (item of suggestions(); track item.text) {
+    <li>
+      <button type="button" (click)="selectSuggestion(item.text)">
+        <strong>{{ item.text }}</strong>
+        <span>{{ item.kind }}</span>
+      </button>
+    </li>
+  } @empty {
+    <li class="is-empty">Suggestions will appear here.</li>
+  }
+</ul>
