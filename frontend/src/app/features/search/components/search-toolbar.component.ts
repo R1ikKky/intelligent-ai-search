@@ -1,4 +1,4 @@
-﻿import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
@@ -18,15 +18,20 @@ export class SearchToolbarComponent {
   readonly queryChanged = output<string>();
   readonly searchSubmitted = output<string>();
 
+  readonly isFocused = signal(false);
+
   readonly form = this.fb.nonNullable.group({
     query: [''],
   });
+
+  get hasValue(): boolean {
+    return this.form.controls.query.value.trim().length > 0;
+  }
 
   constructor() {
     effect(() => {
       const externalQuery = this.query();
       const control = this.form.controls.query;
-
       if (control.value !== externalQuery) {
         control.setValue(externalQuery, { emitEvent: false });
       }
@@ -39,5 +44,10 @@ export class SearchToolbarComponent {
 
   submit(): void {
     this.searchSubmitted.emit(this.form.controls.query.getRawValue());
+  }
+
+  clear(): void {
+    this.form.controls.query.setValue('');
+    this.queryChanged.emit('');
   }
 }

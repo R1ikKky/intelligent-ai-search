@@ -1,10 +1,13 @@
-﻿<div class="search-page">
-  <app-search-toolbar
-    [query]="currentQuery()"
-    [loading]="(loading$ | async) ?? false"
-    (queryChanged)="onQueryChanged($event)"
-    (searchSubmitted)="onSearchSubmitted($event)"
-  />
+<div class="search-page">
+
+  <div class="search-page__toolbar">
+    <app-search-toolbar
+      [query]="currentQuery()"
+      [loading]="(loading$ | async) ?? false"
+      (queryChanged)="onQueryChanged($event)"
+      (searchSubmitted)="onSearchSubmitted($event)"
+    />
+  </div>
 
   @if (error$ | async; as error) {
     <p class="search-page__error">{{ error }}</p>
@@ -18,4 +21,5 @@
   </section>
 
   <app-results-group-list [response]="response$ | async" (itemSelected)="onResultSelected($event)" />
+
 </div>

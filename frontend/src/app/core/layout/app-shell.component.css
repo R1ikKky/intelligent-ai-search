@@ -122,9 +122,10 @@
 .pp-search-bar {
   display: flex;
   align-items: center;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 999px;
+  background: #eef1f6;
+  border: 1px solid #1a56c4;
+  box-shadow: 0 0 0 3px rgba(26, 86, 196, 0.12);
+  border-radius: 4px;
   overflow: hidden;
   height: 38px;
   width: 340px;
@@ -136,32 +137,35 @@
   flex: 1;
   border: none;
   background: transparent;
-  padding: 0 16px;
+  padding: 0 14px;
   font-size: 13px;
-  color: #222;
+  color: #1a1a2e;
   outline: none;
 }
 
 .pp-search-bar__input::placeholder {
-  color: #aaa;
+  color: #9aaabf;
 }
 
 .pp-search-bar__btn {
   width: 38px;
   height: 38px;
   border: none;
-  background: #d0272d;
-  color: #fff;
+  border-left: 1px solid #dde3ed;
+  background: transparent;
+  color: #5a7a9a;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .pp-search-bar__btn:hover {
-  background: #b51f24;
+  background: #1a56c4;
+  color: #fff;
+  border-left-color: #1a56c4;
 }
 
 .pp-search-bar__btn svg {
