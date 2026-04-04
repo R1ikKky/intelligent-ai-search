@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { BulkImportDto } from './dto/bulk-import.dto';
 import { ProductDto, SearchResponseDto } from './dto/product.dto';
 import { SearchQueryDto } from './dto/search-query.dto';
@@ -35,8 +36,11 @@ export class ProductsController {
   @Get('search')
   @ApiOperation({ summary: 'Personalized product search' })
   @ApiResponse({ status: 200, type: SearchResponseDto })
-  async search(@Query() query: SearchQueryDto): Promise<SearchResponseDto> {
-    return this.searchService.search(query);
+  async search(
+    @Query() query: SearchQueryDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<SearchResponseDto> {
+    return this.searchService.search(query, user.sub);
   }
 
   @Get(':id')

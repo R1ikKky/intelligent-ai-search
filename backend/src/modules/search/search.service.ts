@@ -35,8 +35,8 @@ export class SearchService {
     this.boostMax = this.configService.get<number>('personalization.boostMax') ?? 2.0;
   }
 
-  async search(query: SearchQueryDto): Promise<SearchResponseDto> {
-    const { q, userId, page = 1, limit = 20, region } = query;
+  async search(query: SearchQueryDto, userId?: string): Promise<SearchResponseDto> {
+    const { q, page = 1, limit = 20, region } = query;
     const from = (page - 1) * limit;
 
     const response = await this.esClient.search<ProductDoc>({

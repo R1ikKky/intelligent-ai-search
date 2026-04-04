@@ -8,11 +8,6 @@ export class SearchQueryDto {
   @IsNotEmpty()
   q!: string;
 
-  @ApiPropertyOptional({ description: 'ID пользователя для персонализации' })
-  @IsOptional()
-  @IsString()
-  userId?: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

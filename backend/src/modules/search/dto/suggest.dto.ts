@@ -1,13 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SuggestQueryDto {
-  @ApiPropertyOptional({ description: 'ID поисковой сессии' })
-  @IsOptional()
-  @IsUUID()
-  session_id?: string;
-
   @ApiProperty({ example: 'резистар 3 ом' })
   @IsString()
   @IsNotEmpty()

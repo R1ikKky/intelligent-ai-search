@@ -3,7 +3,6 @@ import { Request } from 'express';
 
 export interface JwtPayload {
   sub: string;
-  customerId: string;
   iat?: number;
   exp?: number;
 }
