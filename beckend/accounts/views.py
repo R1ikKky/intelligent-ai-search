@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
@@ -17,6 +18,7 @@ from .serializers import (
     InnTokenObtainPairSerializer,
     RefreshAccessResponseSerializer,
     RegisterSerializer,
+    UserProfileResponseSerializer,
 )
 
 
@@ -208,5 +210,47 @@ class LogoutView(APIView):
         resp = Response(status=status.HTTP_204_NO_CONTENT)
         _clear_refresh(resp)
         return resp
+
+
+@extend_schema(
+    tags=["auth"],
+    summary="Текущий пользователь (JWT)",
+    description="Профиль по access JWT: поля учётной записи Django и данные заказчика из таблицы `customer` (если строка есть).",
+    responses={
+        200: UserProfileResponseSerializer,
+        401: ErrorMessageSerializer,
+    },
+    auth=[{"jwtAuth": []}],
+)
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        inn = user.get_username()
+        try:
+            customer = Customer.objects.get(pk=inn)
+            customer_name = customer.customer_name
+            customer_region = customer.customer_region
+        except Customer.DoesNotExist:
+            customer_name = None
+            customer_region = None
+        return Response(
+            {
+                "userId": user.pk,
+                "customerInn": inn,
+                "login": inn,
+                "email": user.email or "",
+                "firstName": user.first_name or "",
+                "lastName": user.last_name or "",
+                "isActive": user.is_active,
+                "isStaff": user.is_staff,
+                "dateJoined": user.date_joined,
+                "lastLogin": user.last_login,
+                "customerName": customer_name,
+                "customerRegion": customer_region,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
