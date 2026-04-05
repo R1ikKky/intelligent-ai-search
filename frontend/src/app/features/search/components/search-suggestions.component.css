@@ -1,23 +1,80 @@
-.suggestions {
+/* Выпадающий список под строкой ввода; не сдвигает вёрстку (position в :host). */
+:host {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  z-index: 50;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.suggestions-panel {
+  pointer-events: auto;
   list-style: none;
   margin: 0;
+  padding: 4px 0;
+  background: var(--surface, #fffdf7);
+  border: 1px solid rgba(90, 109, 126, 0.14);
+  border-radius: var(--radius-sm, 12px);
+  box-shadow: 0 10px 28px rgba(45, 62, 80, 0.1);
+  max-height: min(42vh, 320px);
+  overflow-y: auto;
+}
+
+.suggestions-panel li {
+  margin: 0;
   padding: 0;
-  display: grid;
-  gap: 10px;
 }
 
-.suggestions li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: #fff;
+.suggestions-panel li + li {
+  border-top: 1px solid rgba(90, 109, 126, 0.1);
 }
 
-.suggestions li span {
-  color: var(--muted);
-  text-transform: uppercase;
-  font-size: 12px;
+.suggestions-panel button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  font-weight: 400;
+  color: #5a6d7e;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.suggestions-panel button:hover {
+  background: rgba(90, 109, 126, 0.07);
+}
+
+.suggestions-panel button:focus-visible {
+  outline: none;
+  background: rgba(90, 109, 126, 0.09);
+}
+
+.suggestions-panel li:first-child button {
+  border-top-left-radius: calc(var(--radius-sm, 12px) - 2px);
+  border-top-right-radius: calc(var(--radius-sm, 12px) - 2px);
+}
+
+.suggestions-panel li:last-child button {
+  border-bottom-left-radius: calc(var(--radius-sm, 12px) - 2px);
+  border-bottom-right-radius: calc(var(--radius-sm, 12px) - 2px);
+}
+
+.suggestion-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }

@@ -1,0 +1,3 @@
+# Скрипты для Linux-контейнеров — только LF (иначе ash: illegal option)
+docker/elasticsearch/*.sh text eol=lf
+scripts/*.sh text eol=lf

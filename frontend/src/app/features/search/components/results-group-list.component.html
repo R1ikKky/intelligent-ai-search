@@ -1,4 +1,4 @@
-﻿<app-section-card title="Search results" eyebrow="Search">
+﻿<app-section-card title="" eyebrow="Search">
   @if (response(); as data) {
     <p class="meta">Query: {{ data.normalizedQuery }} | Total: {{ data.total }}</p>
 
@@ -10,25 +10,96 @@
       <ul class="result-list">
         @for (card of data.cards; track $index) {
           <li class="result-card card-group">
-            @if (card.manufacturer) {
-              <h4 class="mfr">{{ card.manufacturer.name }}</h4>
-            } @else {
-              <h4 class="mfr is-muted">Высокое совпадение (производитель скрыт)</h4>
-            }
-            <ul class="nested">
+            <div >
               @for (it of card.items; track it.steId) {
-                <li>
-                  <button type="button" (click)="selectItem(steToResultItem(it))">
-                    <strong>{{ it.name }}</strong>
-                    <span>{{ it.category }}</span>
-                    @if (it.attributes) {
-                      <small>{{ it.attributes }}</small>
+                @let specs = parseSteSpecs(it.attributes);
+                <div
+                  class="ste-card"
+                  role="button"
+                  tabindex="0"
+                  [attr.data-ste-observe]="it.steId"
+                  (click)="selectItem(steToResultItem(it))"
+                  (keydown.enter)="selectItem(steToResultItem(it))"
+                  (keydown.space)="$event.preventDefault(); selectItem(steToResultItem(it))"
+                >
+                  <div class="ste-card__media" aria-hidden="true">
+                    <div class="ste-card__placeholder">
+                      <span class="ste-card__placeholder-icon">📦</span>
+                      <span class="ste-card__placeholder-caption">Изображение отсутствует</span>
+                    </div>
+                  </div>
+                  <div class="ste-card__content">
+                    <span class="ste-card__badge">{{ it.category || 'СТЕ' }}</span>
+                    <h3 class="ste-card__title">{{ it.name }}</h3>
+                    @if (specs.length > 0) {
+                      <div class="ste-card__spec-list">
+                        @for (row of specs.slice(0, 2); track $index) {
+                          <div class="ste-card__spec-item">
+                            @if (row.label) {
+                              <span class="ste-card__spec-label">{{ row.label }}</span>
+                            }
+                            <span
+                              class="ste-card__spec-value"
+                              [class.ste-card__spec-value--solo]="!row.label"
+                              >{{ row.value }}</span
+                            >
+                          </div>
+                        }
+                        @if (specs.length > 2) {
+                          @if (!isSpecsExpanded(it.steId)) {
+                            <button
+                              type="button"
+                              class="ste-card__spec-toggle"
+                              [attr.aria-expanded]="false"
+                              [attr.aria-label]="'Показать ещё ' + (specs.length - 2) + ' атрибутов'"
+                              (click)="toggleSpecsExpanded(it.steId, $event)"
+                            >
+                              <span class="ste-card__spec-toggle-dots" aria-hidden="true">⋯</span>
+                              <span class="ste-card__spec-toggle-hint">ещё {{ specs.length - 2 }}</span>
+                            </button>
+                          } @else {
+                            @for (row of specs.slice(2); track $index) {
+                              <div class="ste-card__spec-item">
+                                @if (row.label) {
+                                  <span class="ste-card__spec-label">{{ row.label }}</span>
+                                }
+                                <span
+                                  class="ste-card__spec-value"
+                                  [class.ste-card__spec-value--solo]="!row.label"
+                                  >{{ row.value }}</span
+                                >
+                              </div>
+                            }
+                            <button
+                              type="button"
+                              class="ste-card__spec-toggle ste-card__spec-toggle--collapse"
+                              [attr.aria-expanded]="true"
+                              aria-label="Свернуть список атрибутов"
+                              (click)="toggleSpecsExpanded(it.steId, $event)"
+                            >
+                              <span class="ste-card__spec-toggle-dots" aria-hidden="true">⋯</span>
+                              <span class="ste-card__spec-toggle-hint">свернуть</span>
+                            </button>
+                          }
+                        }
+                      </div>
                     }
-                    <span>Score: {{ it.score }}</span>
-                  </button>
-                </li>
+                    <div class="ste-card__product-meta">
+                      <span class="ste-card__id-wrap"
+                        >ID СТЕ <span class="ste-card__id-code">{{ it.steId }}</span></span
+                      >
+                      @if (card.manufacturer) {
+                        <span class="ste-card__mfr" [title]="card.manufacturer.name">{{ card.manufacturer.name }}</span>
+                      }
+                    </div>
+                    <div class="ste-card__action-footer">
+                      <span class="ste-card__compare-link">Подробнее →</span>
+                      <span class="ste-card__cart-btn">Выбрать</span>
+                    </div>
+                  </div>
+                </div>
               }
-            </ul>
+            </div>
           </li>
         } @empty {
           <li class="result-card is-empty">Nothing found for this query.</li>
@@ -37,15 +108,98 @@
     } @else {
       <ul class="result-list">
         @for (item of data.items; track item.id) {
-          <li class="result-card">
-            <button type="button" (click)="selectItem(item)">
-              <strong>{{ item.name }}</strong>
-              <span>{{ item.category }}</span>
-              @if (item.description) {
-                <small>{{ item.description }}</small>
-              }
-              <span>Score: {{ item.score }} | Personalized: {{ item.personalizedScore }}</span>
-            </button>
+          @let flatSpecs = parseSteSpecs(item.description);
+          <li class="result-card result-card--flat">
+            <div
+              class="ste-card"
+              role="button"
+              tabindex="0"
+              [attr.data-ste-observe]="item.externalId || item.id"
+              (click)="selectItem(item)"
+              (keydown.enter)="selectItem(item)"
+              (keydown.space)="$event.preventDefault(); selectItem(item)"
+            >
+              <div class="ste-card__media" aria-hidden="true">
+                <div class="ste-card__placeholder">
+                  <span class="ste-card__placeholder-icon">📦</span>
+                  <span class="ste-card__placeholder-caption">Изображение отсутствует</span>
+                </div>
+              </div>
+              <div class="ste-card__content">
+                <span class="ste-card__badge">{{ item.category || 'Позиция' }}</span>
+                <h3 class="ste-card__title">{{ item.name }}</h3>
+                <div class="ste-card__price-row">
+                  <span class="ste-card__match ste-card__match--secondary"
+                    >Score {{ item.score | number: '1.0-2' }}</span
+                  >
+                  @if (item.personalizedScore !== item.score) {
+                    <span class="ste-card__offers-pill">Персонализация {{ item.personalizedScore | number: '1.0-2' }}</span>
+                  }
+                </div>
+                @if (flatSpecs.length > 0) {
+                  <div class="ste-card__spec-list">
+                    @for (row of flatSpecs.slice(0, 2); track $index) {
+                      <div class="ste-card__spec-item">
+                        @if (row.label) {
+                          <span class="ste-card__spec-label">{{ row.label }}</span>
+                        }
+                        <span
+                          class="ste-card__spec-value"
+                          [class.ste-card__spec-value--solo]="!row.label"
+                          >{{ row.value }}</span
+                        >
+                      </div>
+                    }
+                    @if (flatSpecs.length > 2) {
+                      @if (!isSpecsExpanded(item.id)) {
+                        <button
+                          type="button"
+                          class="ste-card__spec-toggle"
+                          [attr.aria-expanded]="false"
+                          [attr.aria-label]="'Показать ещё ' + (flatSpecs.length - 2) + ' атрибутов'"
+                          (click)="toggleSpecsExpanded(item.id, $event)"
+                        >
+                          <span class="ste-card__spec-toggle-dots" aria-hidden="true">⋯</span>
+                          <span class="ste-card__spec-toggle-hint">ещё {{ flatSpecs.length - 2 }}</span>
+                        </button>
+                      } @else {
+                        @for (row of flatSpecs.slice(2); track $index) {
+                          <div class="ste-card__spec-item">
+                            @if (row.label) {
+                              <span class="ste-card__spec-label">{{ row.label }}</span>
+                            }
+                            <span
+                              class="ste-card__spec-value"
+                              [class.ste-card__spec-value--solo]="!row.label"
+                              >{{ row.value }}</span
+                            >
+                          </div>
+                        }
+                        <button
+                          type="button"
+                          class="ste-card__spec-toggle ste-card__spec-toggle--collapse"
+                          [attr.aria-expanded]="true"
+                          aria-label="Свернуть список атрибутов"
+                          (click)="toggleSpecsExpanded(item.id, $event)"
+                        >
+                          <span class="ste-card__spec-toggle-dots" aria-hidden="true">⋯</span>
+                          <span class="ste-card__spec-toggle-hint">свернуть</span>
+                        </button>
+                      }
+                    }
+                  </div>
+                }
+                <div class="ste-card__product-meta">
+                  <span class="ste-card__id-wrap"
+                    >ID <span class="ste-card__id-code">{{ item.externalId }}</span></span
+                  >
+                </div>
+                <div class="ste-card__action-footer">
+                  <span class="ste-card__compare-link">Подробнее →</span>
+                  <span class="ste-card__cart-btn">Выбрать</span>
+                </div>
+              </div>
+            </div>
           </li>
         } @empty {
           <li class="result-card is-empty">Nothing found for this query.</li>

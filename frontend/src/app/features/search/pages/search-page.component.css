@@ -3,15 +3,12 @@
   gap: 24px;
 }
 
-.search-page__grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
-  gap: 24px;
-  align-items: start;
+.search-page__query-zone {
+  position: relative;
+  z-index: 20;
+  max-width: 100%;
 }
 
-@media (max-width: 960px) {
-  .search-page__grid {
-    grid-template-columns: 1fr;
-  }
+.search-page__results {
+  min-width: 0;
 }

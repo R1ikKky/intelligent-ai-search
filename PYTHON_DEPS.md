@@ -3,8 +3,8 @@
 | Файл | Назначение |
 |------|------------|
 | **[requirements.txt](requirements.txt)** | Django, ES, numpy — **без** torch / sentence-transformers (быстрый Docker-образ **api**) |
-| **[requirements-ml.txt](requirements-ml.txt)** | sentence-transformers (тянет torch, transformers) — семантика и `rebuild_ste_index` |
-| **[requirements-full.txt](requirements-full.txt)** | `-r requirements.txt` + `-r requirements-ml.txt` для локальной разработки с поиском |
+| **[requirements-ml.txt](requirements-ml.txt)** | только sentence-transformers; **torch** ставьте отдельно (CPU — см. ниже) |
+| **[requirements-full.txt](requirements-full.txt)** | `requirements.txt` + `requirements-ml.txt` — **перед ним** нужен CPU torch (иначе на Linux скачается CUDA с PyPI) |
 
 ### Состав `requirements.txt`
 
@@ -28,9 +28,14 @@
 cd intelligent-ai-search
 python -m venv venv
 .\venv\Scripts\activate
-pip install -r requirements-full.txt
+pip install -r requirements.txt
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements-ml.txt
 python beckend/manage.py runserver 0.0.0.0:8000
 ```
+
+Либо одной строкой после `requirements.txt`:  
+`pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements-ml.txt`
 
 Только API без семантики: `pip install -r requirements.txt`.
 

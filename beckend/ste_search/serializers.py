@@ -10,6 +10,7 @@ class SteCardItemSerializer(serializers.Serializer):
     attributes = serializers.CharField()
     score = serializers.FloatField()
     scoreNorm = serializers.FloatField()
+    personalizationMult = serializers.FloatField(required=False)
 
 
 class ManufacturerSerializer(serializers.Serializer):
@@ -42,3 +43,23 @@ class ProductSearchResponseSerializer(serializers.Serializer):
     page = serializers.IntegerField()
     limit = serializers.IntegerField()
     suggestion = serializers.CharField(allow_null=True)
+
+
+class SearchSuggestionItemSerializer(serializers.Serializer):
+    text = serializers.CharField()
+    kind = serializers.CharField()
+    flags = serializers.ListField(child=serializers.CharField())
+    score = serializers.FloatField()
+
+
+class ProductSuggestResponseSerializer(serializers.Serializer):
+    suggestions = SearchSuggestionItemSerializer(many=True)
+
+
+class SteProductDetailSerializer(serializers.Serializer):
+    steId = serializers.CharField()
+    name = serializers.CharField()
+    category = serializers.CharField()
+    attributes = serializers.CharField()
+    supplierInn = serializers.CharField()
+    supplierName = serializers.CharField()

@@ -9,6 +9,7 @@ from elasticsearch.helpers import bulk
 from ste_search.documents import SteSearchDocument
 from ste_search.embedding import encode_texts
 from ste_search.search_service import get_es_client
+from ste_search.text_normalize import normalize_search_text
 
 FETCH_SQL = """
 SELECT d.ste_id, d.ste_name, d.ste_category, d.ste_attributes,
@@ -49,7 +50,7 @@ class Command(BaseCommand):
             SteSearchDocument.init()
             return
 
-        self.stdout.write(f"Индексация {len(rows)} СТЕ…")
+        self.stdout.write(f"Индексация {len(rows)} СТЕ (нормализация текста: search_text + эмбеддинги)…")
 
         SteSearchDocument._index.delete(ignore=[400, 404])
         SteSearchDocument.init()
@@ -70,14 +71,18 @@ class Command(BaseCommand):
             chunk = rows[start : start + batch_size]
             texts = []
             for ste_id, name, cat, attr, _sin, _sname in chunk:
-                parts = [name or "", cat or "", attr or ""]
-                texts.append(" ".join(p for p in parts if p).strip() or (name or ste_id))
+                raw = " ".join(p for p in [name or "", cat or "", attr or ""] if p).strip()
+                blob = raw or (name or ste_id) or ""
+                texts.append(normalize_search_text(blob) or blob.lower())
             vectors = encode_texts(texts, batch_size=min(batch_size, 32))
 
             actions = []
             for row, emb in zip(chunk, vectors):
                 ste_id, name, cat, attr, sin, sname = row
-                search_text = " ".join(p for p in [name or "", cat or "", attr or ""] if p).strip()
+                raw_search = " ".join(p for p in [name or "", cat or "", attr or ""] if p).strip()
+                if not raw_search:
+                    raw_search = (name or ste_id) or ""
+                search_text = normalize_search_text(raw_search) or (raw_search.lower() if raw_search else "")
                 actions.append(
                     {
                         "_op_type": "index",

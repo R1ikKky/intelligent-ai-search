@@ -37,16 +37,34 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Распаковка data/<ES_SNAPSHOT_ZIP> (по умолчанию ste_search_es_snapshot.zip) в data/elasticsearch-snapshot-repo/
+  elasticsearch-snapshot-unpack:
+    build:
+      context: .
+      dockerfile: docker/elasticsearch/Dockerfile.snapshot-tools
+    image: intelligent-ai-search-snapshot-tools
+    volumes:
+      - ./data:/data
+      - ./docker/elasticsearch/snapshot-unpack.sh:/snapshot-unpack.sh:ro
+    environment:
+      ES_SNAPSHOT_ZIP: ${ES_SNAPSHOT_ZIP:-ste_search_es_snapshot.zip}
+    entrypoint: ["sh", "/snapshot-unpack.sh"]
+    restart: "no"
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - '9200:9200'
+    depends_on:
+      elasticsearch-snapshot-unpack:
+        condition: service_completed_successfully
     volumes:
       - ${DOCKER_VOLUME_ROOT:-D:/docker-data/intelligent-ai-search}/elasticsearch:/usr/share/elasticsearch/data
+      - ./docker/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      # Файловый репозиторий снимков (zip кладите в data/ — см. docks/elasticsearch-sharing.md)
+      - ./data/elasticsearch-snapshot-repo:/usr/share/elasticsearch/snapshots
     healthcheck:
       test:
         [
@@ -57,6 +75,24 @@ services:
       timeout: 10s
       retries: 12
       start_period: 60s
+
+  # Восстановление ste_search из repo/ после старта ES (один раз, пока нет data/.ste_search_es_restore_done)
+  elasticsearch-snapshot-restore:
+    build:
+      context: .
+      dockerfile: docker/elasticsearch/Dockerfile.snapshot-tools
+    image: intelligent-ai-search-snapshot-tools
+    volumes:
+      - ./data:/data
+      - ./data/elasticsearch-snapshot-repo:/snapshots:ro
+      - ./docker/elasticsearch/snapshot-restore.sh:/snapshot-restore.sh:ro
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    entrypoint: ["sh", "/snapshot-restore.sh"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: "no"
 
   api:
     build:
@@ -82,6 +118,8 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      elasticsearch-snapshot-restore:
+        condition: service_completed_successfully
     restart: unless-stopped
   frontend:
     build:

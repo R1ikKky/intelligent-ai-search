@@ -61,6 +61,7 @@ def group_hits_to_cards(
             supplier_name = cl_sorted[0].get("supplier_name") or ""
             items = []
             for x in cl_sorted:
+                pm = float(x.get("_personalization_mult", 1.0) or 1.0)
                 items.append(
                     {
                         "steId": x["ste_id"],
@@ -69,6 +70,7 @@ def group_hits_to_cards(
                         "attributes": x["ste_attributes"] or "",
                         "score": round(float(x["_score"]), 6),
                         "scoreNorm": round(float(x["_norm"]), 6),
+                        "personalizationMult": round(pm, 6),
                     }
                 )
             best_norm = max(i["scoreNorm"] for i in items)

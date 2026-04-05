@@ -9,6 +9,15 @@ import {
   SteCard,
 } from '../../../shared/models/search.models';
 
+export interface SteProductDetail {
+  readonly steId: string;
+  readonly name: string;
+  readonly category: string;
+  readonly attributes: string;
+  readonly supplierInn: string;
+  readonly supplierName: string;
+}
+
 interface BackendSearchResponse {
   readonly items: readonly SearchResultItem[];
   readonly cards?: readonly SteCard[];
@@ -18,9 +27,21 @@ interface BackendSearchResponse {
   readonly suggestion: string | null;
 }
 
+interface BackendSuggestResponse {
+  readonly suggestions: readonly SearchSuggestion[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SearchApi {
   constructor(private readonly http: HttpClient) {}
+
+  getSteById(steId: string): Observable<SteProductDetail | null> {
+    const id = steId.trim();
+    if (!id) {
+      return of(null);
+    }
+    return this.http.get<SteProductDetail>(`/products/ste/${encodeURIComponent(id)}`);
+  }
 
   suggest(query: string): Observable<readonly SearchSuggestion[]> {
     const normalizedQuery = query.trim();
@@ -29,7 +50,38 @@ export class SearchApi {
       return of([]);
     }
 
-    return of([]);
+    const params = new HttpParams().set('q', normalizedQuery).set('limit', '12');
+
+    return this.http.get<BackendSuggestResponse>('/products/suggest', { params }).pipe(
+      map((response) => this.dedupeSuggestions(response.suggestions ?? [])),
+    );
+  }
+
+  private dedupeSuggestions(items: readonly SearchSuggestion[]): SearchSuggestion[] {
+    const seen = new Set<string>();
+    const out: SearchSuggestion[] = [];
+    for (const s of items) {
+      const key = this.suggestionNormKey(s.text);
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      out.push({
+        text: s.text.trim(),
+        kind: s.kind,
+        flags: [...(s.flags ?? [])],
+        score: typeof s.score === 'number' ? s.score : 0,
+      });
+    }
+    return out;
+  }
+
+  private suggestionNormKey(text: string): string {
+    return text
+      .trim()
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
   }
 
   search(query: string): Observable<SearchResponse> {

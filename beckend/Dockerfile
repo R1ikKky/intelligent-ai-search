@@ -17,7 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt \
          echo ">>> ERROR: ENABLE_CUDA_TORCH=1 требует WITH_ML=1"; exit 1; \
        fi \
     && if [ "$WITH_ML" = "1" ]; then \
-         echo ">>> [api] pip install ML (sentence-transformers, torch…) — может занять много времени"; \
+         echo ">>> [api] torch CPU (индекс whl/cpu — без пакетов NVIDIA/CUDA)…"; \
+         pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu; \
+         echo ">>> [api] sentence-transformers (torch уже стоит — не тянем CUDA-сборку с PyPI)…"; \
          pip install --no-cache-dir -r requirements-ml.txt \
          && echo ">>> [api] ML-зависимости установлены"; \
          if [ "$ENABLE_CUDA_TORCH" = "1" ]; then \

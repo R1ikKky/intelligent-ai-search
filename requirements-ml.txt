@@ -1,4 +1,9 @@
-# Семантический поиск: тянет torch, transformers и т.д.
-# Docker по умолчанию без этого файла; локально: pip install -r requirements-ml.txt
-# или pip install -r requirements-full.txt
+# Семантический поиск (transformers и т.д.). Torch сюда не добавляйте —
+# иначе на Linux pip возьмёт тяжёлую сборку с CUDA с pypi.org.
+#
+# Локально (CPU, без GPU):
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements-ml.txt
+#
+# В Docker (docker-compose.ml.yml) torch CPU ставится в Dockerfile до этого файла.
 sentence-transformers>=3.0,<4

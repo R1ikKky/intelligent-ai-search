@@ -21,6 +21,8 @@ docker compose up --build -d
   `docker compose exec api python manage.py rebuild_ste_index`  
   (первый запуск скачает веса модели — может занять время и трафик).
 
+- **Другие ПК / без повторной индексации:** положите **`data/ste_search_es_snapshot.zip`** (создаётся `scripts/es-snapshot-export.*`) — при **`docker compose up`** архив ищется в **`data/`** и при необходимости импортируется в ES (подробности — [docks/elasticsearch-sharing.md](docks/elasticsearch-sharing.md)).
+
 - Ускорение эмбеддингов на **GPU** (опционально) — см. раздел **«GPU и эмбеддинги (поиск СТЕ)»** ниже.
 
 **После успешного старта:** UI — http://localhost:4200 ; документация API — [Swagger UI (OpenAPI)](http://localhost:3000/schema/swagger-ui/) ; Postgres — `localhost:5432` (значения по умолчанию: пользователь `search_user`, БД `search_db`, пароль `search_pass`).
@@ -42,7 +44,9 @@ docker compose up --build -d
 ### Локально (venv, без Docker)
 
 - **Только API и ES без семантики:** `pip install -r requirements.txt`
-- **Семантический поиск и индексация:** дополнительно `pip install -r requirements-ml.txt` или сразу `pip install -r requirements-full.txt` (подтянет **CPU torch** и **sentence-transformers**).
+- **Семантический поиск и индексация:** сначала **CPU torch** с индекса PyTorch, затем ML-зависимости — иначе на Linux `pip` часто тянет **CUDA/NVIDIA** с PyPI:  
+  `pip install torch --index-url https://download.pytorch.org/whl/cpu` → `pip install -r requirements-ml.txt`  
+  (или по шагам из [PYTHON_DEPS.md](PYTHON_DEPS.md); файл `requirements-full.txt` только склеивает `requirements.txt` + `requirements-ml.txt` и **не** ставит torch сам).
 
 Для **NVIDIA GPU** после этого переустановите torch с CUDA ([страница PyTorch](https://pytorch.org/get-started/locally/)), например CUDA 12.4:
 
@@ -60,7 +64,7 @@ Build-args в [`beckend/Dockerfile`](beckend/Dockerfile):
 
 | Аргумент | По умолчанию | Смысл |
 |----------|--------------|--------|
-| `WITH_ML` | `0` | `1` — установить [`requirements-ml.txt`](requirements-ml.txt) (torch, transformers, sentence-transformers) |
+| `WITH_ML` | `0` | `1` — **torch только CPU** с `whl/cpu`, затем [`requirements-ml.txt`](requirements-ml.txt) (без пакетов NVIDIA; GPU — только `docker-compose.gpu.yml`) |
 | `ENABLE_CUDA_TORCH` | `0` | только при `WITH_ML=1`: заменить torch на сборку **cu124** |
 
 - **Обычный запуск** (`docker compose up --build`): образ **api** **без** torch/transformers — быстрая сборка. Эндпоинты с эмбеддингами и `rebuild_ste_index` вернут понятную ошибку, пока не пересоберёте с ML.

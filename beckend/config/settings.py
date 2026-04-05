@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "ste_search",
+    "events",
 ]
 
 ELASTICSEARCH_URL = os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200")

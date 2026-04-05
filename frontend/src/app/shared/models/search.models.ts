@@ -30,6 +30,7 @@ export interface SteCardItem {
   readonly attributes: string;
   readonly score: number;
   readonly scoreNorm: number;
+  readonly personalizationMult?: number;
 }
 
 export interface SteCard {
