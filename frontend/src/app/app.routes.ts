@@ -8,15 +8,15 @@ export const appRoutes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'auth/login',
+    redirectTo: 'login',
   },
   {
-    path: 'auth/login',
+    path: 'login',
     loadComponent: () => import('./features/auth/pages/login-page.component').then((m) => m.LoginPageComponent),
     canActivate: [guestOnlyGuard],
   },
   {
-    path: 'auth/register',
+    path: 'register',
     loadComponent: () => import('./features/auth/pages/register-page.component').then((m) => m.RegisterPageComponent),
     canActivate: [guestOnlyGuard],
   },
@@ -38,6 +38,6 @@ export const appRoutes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'auth/login',
+    redirectTo: 'login',
   },
 ];

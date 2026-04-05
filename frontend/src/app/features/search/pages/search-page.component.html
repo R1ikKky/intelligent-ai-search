@@ -1,4 +1,4 @@
-﻿<div class="search-page">
+<div class="search-page">
   <div class="search-page__query-zone">
     <app-search-toolbar
       [query]="currentQuery()"
@@ -8,13 +8,17 @@
     />
     <app-search-suggestions
       [suggestions]="(suggestions$ | async) ?? []"
+      [dismissed]="suggestionsDismissed()"
       (suggestionSelected)="onSuggestionSelected($event)"
+      (hideRequested)="onSuggestionsHideRequested()"
     />
   </div>
 
   @if (error$ | async; as error) {
     <p class="search-page__error">{{ error }}</p>
   }
+
+  <div #resultsTop class="search-page__results-anchor" aria-hidden="true"></div>
 
   <section class="search-page__results">
     <app-results-group-list
@@ -24,4 +28,17 @@
       (deepCardInterest)="onDeepCardInterest($event)"
     />
   </section>
+
+  @if (response$ | async; as resp) {
+    @if (resp.total > resp.limit) {
+      <div class="search-page__pagination">
+        <app-pagination
+          [page]="currentPage()"
+          [total]="resp.total"
+          [limit]="resp.limit"
+          (pageChange)="onPageChanged($event)"
+        />
+      </div>
+    }
+  }
 </div>

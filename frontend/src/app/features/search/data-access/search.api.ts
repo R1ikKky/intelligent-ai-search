@@ -84,7 +84,7 @@ export class SearchApi {
       .replace(/\s+/g, ' ');
   }
 
-  search(query: string): Observable<SearchResponse> {
+  search(query: string, page = 1): Observable<SearchResponse> {
     const normalizedQuery = query.trim();
 
     if (!normalizedQuery) {
@@ -104,7 +104,7 @@ export class SearchApi {
 
     const params = new HttpParams()
       .set('q', normalizedQuery)
-      .set('page', '1')
+      .set('page', String(page))
       .set('limit', '20');
 
     return this.http

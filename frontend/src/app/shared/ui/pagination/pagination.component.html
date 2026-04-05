@@ -1,0 +1,36 @@
+@if (totalPages() > 1) {
+  <nav class="pagination" aria-label="Страницы результатов">
+    <button
+      class="pagination__btn pagination__btn--arrow"
+      [disabled]="currentPage() <= 1"
+      (click)="goTo(currentPage() - 1)"
+      aria-label="Предыдущая страница"
+    >
+      &#8249;
+    </button>
+
+    @for (item of pages(); track $index) {
+      @if (isEllipsis(item)) {
+        <span class="pagination__ellipsis">…</span>
+      } @else {
+        <button
+          class="pagination__btn"
+          [class.pagination__btn--active]="item === currentPage()"
+          [attr.aria-current]="item === currentPage() ? 'page' : null"
+          (click)="goTo(item)"
+        >
+          {{ item }}
+        </button>
+      }
+    }
+
+    <button
+      class="pagination__btn pagination__btn--arrow"
+      [disabled]="currentPage() >= totalPages()"
+      (click)="goTo(currentPage() + 1)"
+      aria-label="Следующая страница"
+    >
+      &#8250;
+    </button>
+  </nav>
+}

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
-import { AuthResponse, LoginRequest, RefreshResponse, RegisterRequest } from '../../../shared/models/auth.models';
+import { AuthResponse, LoginRequest, RefreshResponse, RegisterRequest, UserProfile } from '../../../shared/models/auth.models';
 
 interface BackendRegisterRequest {
   readonly inn: string;
@@ -20,6 +20,12 @@ interface BackendAuthResponse {
   readonly accessToken: string;
   readonly customerId: string;
   readonly login: string;
+}
+
+interface BackendCustomerRow {
+  readonly customerInn: string;
+  readonly customerName: string;
+  readonly customerRegion: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -50,6 +56,18 @@ export class AuthApi {
     return this.http.post<void>('/auth/logout', {}, { withCredentials: true });
   }
 
+  me(): Observable<UserProfile> {
+    return this.http.get<UserProfile>('/auth/me', { withCredentials: true });
+  }
+
+  updateMyRegion(region: string): Observable<BackendCustomerRow> {
+    return this.http.patch<BackendCustomerRow>(
+      '/customers/me/region',
+      { location: region },
+      { withCredentials: true },
+    );
+  }
+
   private mapRegisterPayload(payload: RegisterRequest): BackendRegisterRequest {
     return {
       inn: payload.customerInn,
@@ -70,7 +88,6 @@ export class AuthApi {
     return {
       accessToken: response.accessToken,
       customerId: response.customerId,
-      customerDataId: response.login,
       login: response.login,
     };
   }

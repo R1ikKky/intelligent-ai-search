@@ -1,18 +1,89 @@
-.toolbar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
+.st-form {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  background: #eef1f6;
+  border: 1px solid #dde3ed;
+  border-radius: 4px;
+  height: 44px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  overflow: hidden;
 }
 
-.toolbar input,
-.toolbar button {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 14px 18px;
+/* State 3: focused on empty input */
+.st-form--focused {
+  background: #fff;
+  border-color: #1a56c4;
+  box-shadow: 0 0 0 3px rgba(26, 86, 196, 0.12);
 }
 
-.toolbar button {
-  background: var(--primary);
+.st-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0 14px;
+  font-size: 14px;
+  color: #1a1a2e;
+  outline: none;
+  min-width: 0;
+  height: 100%;
+}
+
+.st-input::placeholder {
+  color: #9aaabf;
+  font-size: 13px;
+}
+
+/* Shared button base */
+.st-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  transition: color 0.15s, background 0.15s;
+}
+
+/* Clear (×) */
+.st-btn--clear {
+  width: 36px;
+  color: #8a9ab5;
+  padding: 0;
+}
+
+.st-btn--clear:hover {
+  color: #d0272d;
+}
+
+.st-btn--clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Search icon */
+.st-btn--search {
+  width: 44px;
+  border-left: 1px solid #dde3ed;
+  color: #5a7a9a;
+  padding: 0;
+}
+
+.st-btn--search:hover:not(:disabled) {
+  background: #1a56c4;
   color: #fff;
-  border-color: var(--primary);
+  border-left-color: #1a56c4;
+}
+
+.st-btn--search:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.st-btn--search svg {
+  width: 18px;
+  height: 18px;
 }

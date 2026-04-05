@@ -1,0 +1,80 @@
+@if (open()) {
+  <div class="region-dialog-backdrop" (click)="requestClose()">
+    <section
+      class="region-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="region-dialog-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="region-dialog__header">
+        <h2 id="region-dialog-title" class="region-dialog__title">Выберите регион</h2>
+      </header>
+
+      <form class="region-dialog__search" (submit)="$event.preventDefault(); applyFilter()">
+        <label class="region-dialog__search-field">
+          <span class="region-dialog__search-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="8.5" cy="8.5" r="5.5" />
+              <line x1="12.5" y1="12.5" x2="18" y2="18" stroke-linecap="round" />
+            </svg>
+          </span>
+          <input
+            #searchInput
+            type="text"
+            class="region-dialog__search-input"
+            [value]="query()"
+            placeholder="Поиск по регионам"
+            autocomplete="off"
+            (input)="onQueryInput($event)"
+          />
+        </label>
+
+        <button type="submit" class="region-dialog__search-btn">Найти</button>
+      </form>
+
+      <div class="region-dialog__list-wrap">
+        <ul class="region-dialog__list" role="listbox" aria-label="Список регионов">
+          @for (region of filteredRegions(); track region) {
+            <li>
+              <button
+                type="button"
+                class="region-dialog__option"
+                [class.region-dialog__option--selected]="region === selectedRegion()"
+                (click)="selectRegion(region)"
+              >
+                <span class="region-dialog__check" aria-hidden="true">
+                  @if (region === selectedRegion()) {
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polyline points="3.2,8.3 6.5,11.4 12.8,4.7" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  }
+                </span>
+                <span class="region-dialog__label">{{ region }}</span>
+              </button>
+            </li>
+          } @empty {
+            <li class="region-dialog__empty">Ничего не найдено</li>
+          }
+        </ul>
+      </div>
+
+      @if (error()) {
+        <p class="region-dialog__error">{{ error() }}</p>
+      }
+
+      <footer class="region-dialog__footer">
+        <button type="button" class="region-dialog__cancel-btn" [disabled]="loading()" (click)="requestClose()">
+          Отмена
+        </button>
+        <button type="button" class="region-dialog__confirm-btn" [disabled]="!canConfirm()" (click)="confirm()">
+          @if (loading()) {
+            Сохраняем...
+          } @else {
+            Выбрать
+          }
+        </button>
+      </footer>
+    </section>
+  </div>
+}

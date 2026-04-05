@@ -41,8 +41,8 @@ export class SearchEffects {
   readonly search$ = createEffect(() =>
     this.actions$.pipe(
       ofType(SearchActions.searchRequested),
-      switchMap(({ query }) =>
-        this.searchApi.search(query).pipe(
+      switchMap(({ query, page }) =>
+        this.searchApi.search(query, page).pipe(
           map((response) => SearchActions.searchLoaded({ response })),
           catchError((error) => of(SearchActions.failureReceived({ message: this.resolveErrorMessage(error, 'Не удалось выполнить поиск.') }))),
         ),

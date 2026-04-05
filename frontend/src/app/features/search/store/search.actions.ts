@@ -8,7 +8,7 @@ export const SearchActions = createActionGroup({
   events: {
     'Suggestions Requested': props<{ query: string }>(),
     'Suggestions Loaded': props<{ suggestions: readonly SearchSuggestion[] }>(),
-    'Search Requested': props<{ query: string }>(),
+    'Search Requested': props<{ query: string; page: number }>(),
     'Search Loaded': props<{ response: SearchResponse }>(),
     'Telemetry Flush Requested': props<{ payload: TelemetryBatchRequest }>(),
     'Failure Received': props<{ message: string }>(),

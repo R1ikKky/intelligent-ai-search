@@ -1,4 +1,34 @@
-﻿<form class="toolbar" [formGroup]="form" (ngSubmit)="submit()">
-  <input type="text" formControlName="query" placeholder="Search for STE, category, or attribute" />
-  <button type="submit" [disabled]="loading()">Find</button>
+<form
+  class="st-form"
+  [class.st-form--focused]="isFocused()"
+  [formGroup]="form"
+  (ngSubmit)="submit()"
+>
+  <input
+    class="st-input"
+    type="text"
+    formControlName="query"
+    placeholder="Воспользуйтесь поиском по Порталу"
+    autocomplete="off"
+    (focus)="isFocused.set(true)"
+    (blur)="isFocused.set(false)"
+  />
+
+  <!-- Clear button — only when there is text -->
+  @if (hasValue) {
+    <button class="st-btn st-btn--clear" type="button" (click)="clear()" tabindex="-1" title="Очистить">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="3" x2="13" y2="13"/>
+        <line x1="13" y1="3" x2="3" y2="13"/>
+      </svg>
+    </button>
+  }
+
+  <!-- Search button -->
+  <button class="st-btn st-btn--search" type="submit" [disabled]="loading()" title="Найти">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="8.5" cy="8.5" r="5.5"/>
+      <line x1="12.5" y1="12.5" x2="18" y2="18"/>
+    </svg>
+  </button>
 </form>

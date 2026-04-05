@@ -1,11 +1,18 @@
-﻿@if (suggestions().length > 0) {
-  <ul class="suggestions-panel" role="listbox" aria-label="Подсказки поиска">
-    @for (item of suggestions(); track item.kind + ':' + item.text) {
-      <li role="option">
-        <button type="button" (click)="selectSuggestion(item.text)">
-          <span class="suggestion-text">{{ item.text }}</span>
-        </button>
-      </li>
-    }
-  </ul>
+@if (!dismissed() && suggestions().length > 0) {
+  <div class="suggestions-panel">
+    <div class="suggestions-panel__header">
+      <span class="suggestions-panel__title">Подсказки</span>
+      <button type="button" class="suggestions-panel__hide-btn" (click)="hide()">Скрыть</button>
+    </div>
+
+    <ul role="listbox" aria-label="Подсказки поиска">
+      @for (item of suggestions(); track item.kind + ':' + item.text) {
+        <li role="option">
+          <button type="button" (click)="selectSuggestion(item.text)">
+            <span class="suggestion-text">{{ item.text }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
 }

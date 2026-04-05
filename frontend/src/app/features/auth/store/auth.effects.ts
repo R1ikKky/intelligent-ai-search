@@ -2,7 +2,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { TokenStorageService } from '../../../core/services/token-storage.service';
 import { AuthApi } from '../data-access/auth.api';
@@ -96,12 +96,43 @@ export class AuthEffects {
     { dispatch: false },
   );
 
+  readonly fetchProfile$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.authSucceeded, AuthActions.accessTokenRefreshed, AuthActions.loadProfileRequested),
+      switchMap(() =>
+        this.authApi.me().pipe(
+          map((profile) => AuthActions.profileLoaded({ profile })),
+          catchError(() => EMPTY),
+        ),
+      ),
+    ),
+  );
+
+  readonly updateCustomerRegion$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.customerRegionUpdateRequested),
+      switchMap(({ region }) =>
+        this.authApi.updateMyRegion(region).pipe(
+          switchMap(() =>
+            this.authApi.me().pipe(
+              map((profile) => AuthActions.profileLoaded({ profile })),
+              catchError((error) =>
+                of(AuthActions.authFailed({ message: this.resolveErrorMessage(error, 'Не удалось обновить профиль после смены региона.') })),
+              ),
+            ),
+          ),
+          catchError((error) => of(AuthActions.authFailed({ message: this.resolveErrorMessage(error, 'Не удалось обновить регион.') }))),
+        ),
+      ),
+    ),
+  );
+
   readonly navigateAfterLogout$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType(AuthActions.logoutCompleted),
         tap(() => {
-          void this.router.navigate(['/auth/login']);
+          void this.router.navigate(['/login']);
         }),
       ),
     { dispatch: false },
