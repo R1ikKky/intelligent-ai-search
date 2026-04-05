@@ -13,10 +13,7 @@ django-cors-headers>=4.3,<5
 gunicorn>=22,<24
 python-dotenv>=1.0,<2
 #
-# --- Поиск СТЕ (Elasticsearch + эмбеддинги) ---
-# Для NVIDIA GPU на ПК: после установки зависимостей поставьте torch с CUDA
-# (см. https://pytorch.org/get-started/locally/ ); ste_search/embedding.py сам выберет cuda.
+# --- Поиск СТЕ (Elasticsearch; эмбеддинги — отдельно requirements-ml.txt) ---
 django-elasticsearch-dsl>=8.0,<9
 elasticsearch>=8.12,<9
-sentence-transformers>=3.0,<4
 numpy>=1.26,<3

@@ -47,7 +47,77 @@ def _repair_customer_schema_sql() -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _table_exists(cur: psycopg.Cursor, name: str) -> bool:
+    cur.execute(
+        "SELECT 1 FROM information_schema.tables "
+        "WHERE table_schema = 'public' AND table_name = %s",
+        (name,),
+    )
+    return cur.fetchone() is not None
+
+
+def _column_exists(cur: psycopg.Cursor, table: str, column: str) -> bool:
+    cur.execute(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_schema = 'public' AND table_name = %s AND column_name = %s",
+        (table, column),
+    )
+    return cur.fetchone() is not None
+
+
+def _customer_incompatible_with_loader(cur: psycopg.Cursor) -> bool:
+    """
+    Django/старая схема: есть customer_data_id NOT NULL и т.п., а loader вставляет только
+    (customer_inn, customer_name, customer_region).
+    """
+    if not _table_exists(cur, "customer"):
+        return False
+    if _column_exists(cur, "customer", "customer_data_id"):
+        return True
+    return False
+
+
+def reset_loader_tables_if_incompatible(cur: psycopg.Cursor) -> None:
+    """
+    Сброс ETL-таблиц и при необходимости customer, если схема не совпадает с dataset-loader.
+
+    - supplier/ste без supplier_inn: CREATE IF NOT EXISTS не чинит таблицу.
+    - customer с customer_data_id и пр.: INSERT из CSV даёт NULL в NOT NULL колонках.
+    """
+    supplier_ste_bad = (
+        _table_exists(cur, "supplier") and not _column_exists(cur, "supplier", "supplier_inn")
+    ) or (
+        _table_exists(cur, "ste") and not _column_exists(cur, "ste", "supplier_inn")
+    )
+    customer_bad = _customer_incompatible_with_loader(cur)
+
+    if not supplier_ste_bad and not customer_bad:
+        return
+
+    reasons = []
+    if supplier_ste_bad:
+        reasons.append("supplier/ste без supplier_inn")
+    if customer_bad:
+        reasons.append("customer не под INSERT из CSV (есть customer_data_id и др.)")
+    print(
+        "WARNING: схема БД не совместима с dataset-loader ("
+        + "; ".join(reasons)
+        + "). Удаляю ste_supplier_stat, history_contract, ste_data, ste, supplier, customer…",
+        flush=True,
+    )
+    for tbl in (
+        "ste_supplier_stat",
+        "history_contract",
+        "ste_data",
+        "ste",
+        "supplier",
+        "customer",
+    ):
+        cur.execute(sql.SQL("DROP TABLE IF EXISTS {} CASCADE").format(sql.Identifier(tbl)))
+
+
 def ensure_schema(cur: psycopg.Cursor) -> None:
+    reset_loader_tables_if_incompatible(cur)
     cur.execute(_repair_customer_schema_sql())
     stmts = [
         """CREATE TABLE IF NOT EXISTS supplier (

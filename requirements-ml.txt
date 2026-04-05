@@ -1,0 +1,4 @@
+# Семантический поиск: тянет torch, transformers и т.д.
+# Docker по умолчанию без этого файла; локально: pip install -r requirements-ml.txt
+# или pip install -r requirements-full.txt
+sentence-transformers>=3.0,<4

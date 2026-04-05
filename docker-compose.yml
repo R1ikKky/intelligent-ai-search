@@ -62,8 +62,6 @@ services:
     build:
       context: .
       dockerfile: beckend/Dockerfile
-      args:
-        ENABLE_CUDA_TORCH: ${ENABLE_CUDA_TORCH:-0}
     ports:
       - '3000:8000'
     environment:

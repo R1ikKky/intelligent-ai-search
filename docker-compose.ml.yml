@@ -1,0 +1,12 @@
+# Опционально: семантический поиск в Docker на CPU (torch + sentence-transformers, без CUDA).
+# Сборка дольше и образ тяжелее, чем базовый api без ML.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ml.yml up --build
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: beckend/Dockerfile
+      args:
+        WITH_ML: "1"

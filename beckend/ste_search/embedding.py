@@ -9,6 +9,22 @@ logger = logging.getLogger(__name__)
 
 _model = None
 
+_ML_INSTALL_HINT = (
+    "Нет пакетов PyTorch / sentence-transformers. "
+    "Локально: pip install -r requirements-ml.txt (или requirements-full.txt). "
+    "Docker CPU+ML: docker compose -f docker-compose.yml -f docker-compose.ml.yml build api. "
+    "Docker GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml build api."
+)
+
+
+def _import_torch():
+    try:
+        import torch
+
+        return torch
+    except ImportError as e:
+        raise RuntimeError(_ML_INSTALL_HINT) from e
+
 
 def get_embedding_model_name() -> str:
     return os.environ.get(
@@ -22,7 +38,7 @@ def resolve_inference_device() -> str:
     CUDA → MPS (Apple Silicon) → CPU.
     Переопределение: STE_EMBEDDING_DEVICE=auto|cuda|mps|cpu
     """
-    import torch
+    torch = _import_torch()
 
     override = os.environ.get("STE_EMBEDDING_DEVICE", "auto").strip().lower()
     if override == "cuda":
@@ -50,7 +66,10 @@ def resolve_inference_device() -> str:
 def get_embedder():
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as e:
+            raise RuntimeError(_ML_INSTALL_HINT) from e
 
         name = get_embedding_model_name()
         device = resolve_inference_device()
