@@ -1,0 +1,3 @@
+# Образ для одноразовых сервисов unpack/restore (alpine + unzip/curl/jq через скрипты).
+FROM alpine:3.20
+RUN apk add --no-cache unzip curl jq

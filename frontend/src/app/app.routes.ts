@@ -29,6 +29,11 @@ export const appRoutes: Routes = [
         path: 'search',
         loadComponent: () => import('./features/search/pages/search-page.component').then((m) => m.SearchPageComponent),
       },
+      {
+        path: 'ste/:steId',
+        loadComponent: () =>
+          import('./features/search/pages/ste-product-page.component').then((m) => m.SteProductPageComponent),
+      },
     ],
   },
   {

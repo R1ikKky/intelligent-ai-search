@@ -11,12 +11,87 @@ docker compose up --build -d
 **Условия запуска:**
 
 - Установлены **Docker** и **Docker Compose** v2, запущен Docker Engine (на Windows — **Docker Desktop**).
-- Свободны порты **5432** (Postgres) и **4200** (веб-фронт в nginx).
+- Свободны порты **5432** (Postgres), **9200** (Elasticsearch) и **4200** (веб-фронт в nginx).
 - По желанию: скопируйте `.env.example` в `.env`, чтобы задать `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` и при необходимости **`DOCKER_VOLUME_ROOT`** (по умолчанию том Postgres: `D:/docker-data/intelligent-ai-search/postgres`).
 - **Импорт датасета в Postgres:** в папку **`data/`** положите оба файла **`Контракты_20260403.csv`** и **`СТЕ_20260403.csv`** (разделитель `;`, кодировка UTF-8 с BOM, без строки заголовка — см. [docks/datasets.manifest.json](docks/datasets.manifest.json)). После того как контейнер **postgres** станет healthy, один раз отработает **dataset-loader**. Если CSV нет — в логах будет предупреждение, контейнер завершится с кодом 0, **postgres** и **frontend** продолжают работать без заливки таблиц из этих файлов.
 - Повторить только загрузку в уже поднятую БД: `docker compose up -d postgres`, затем `docker compose run --rm dataset-loader`.
+- **Поиск СТЕ:** сервис **api** ждёт готовый Elasticsearch. Базовый образ **api** собирается **без** PyTorch / sentence-transformers (быстрая сборка). Чтобы индексировать с эмбеддингами, поднимите стек с ML — например  
+  `docker compose -f docker-compose.yml -f docker-compose.ml.yml up --build -d`  
+  (CPU) или с GPU — см. раздел ниже. Затем после заливки `ste_data` / `history_contract`:  
+  `docker compose exec api python manage.py rebuild_ste_index`  
+  (первый запуск скачает веса модели — может занять время и трафик).
+
+- **Другие ПК / без повторной индексации:** положите **`data/ste_search_es_snapshot.zip`** (создаётся `scripts/es-snapshot-export.*`) — при **`docker compose up`** архив ищется в **`data/`** и при необходимости импортируется в ES (подробности — [docks/elasticsearch-sharing.md](docks/elasticsearch-sharing.md)).
+
+- Ускорение эмбеддингов на **GPU** (опционально) — см. раздел **«GPU и эмбеддинги (поиск СТЕ)»** ниже.
 
 **После успешного старта:** UI — http://localhost:4200 ; документация API — [Swagger UI (OpenAPI)](http://localhost:3000/schema/swagger-ui/) ; Postgres — `localhost:5432` (значения по умолчанию: пользователь `search_user`, БД `search_db`, пароль `search_pass`).
+
+## GPU и эмбеддинги (поиск СТЕ)
+
+Семантический поиск использует **sentence-transformers** и **PyTorch**. По умолчанию используется **CPU**; если на машине есть подходящий ускоритель, его можно задействовать автоматически или явно.
+
+### Как выбирается устройство
+
+В коде ([`beckend/ste_search/embedding.py`](beckend/ste_search/embedding.py)) порядок такой:
+
+1. **NVIDIA CUDA** — если `torch.cuda.is_available()`.
+2. **Apple MPS** — если доступен `torch.backends.mps` (Apple Silicon).
+3. Иначе **CPU**.
+
+Переменная окружения **`STE_EMBEDDING_DEVICE`** переопределяет режим: `auto` (по умолчанию), `cuda`, `mps`, `cpu`. Если указано `cuda` или `mps`, а устройства нет, в лог пишется предупреждение и используется CPU.
+
+### Локально (venv, без Docker)
+
+- **Только API и ES без семантики:** `pip install -r requirements.txt`
+- **Семантический поиск и индексация:** сначала **CPU torch** с индекса PyTorch, затем ML-зависимости — иначе на Linux `pip` часто тянет **CUDA/NVIDIA** с PyPI:  
+  `pip install torch --index-url https://download.pytorch.org/whl/cpu` → `pip install -r requirements-ml.txt`  
+  (или по шагам из [PYTHON_DEPS.md](PYTHON_DEPS.md); файл `requirements-full.txt` только склеивает `requirements.txt` + `requirements-ml.txt` и **не** ставит torch сам).
+
+Для **NVIDIA GPU** после этого переустановите torch с CUDA ([страница PyTorch](https://pytorch.org/get-started/locally/)), например CUDA 12.4:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu124
+```
+
+При доступной CUDA модель загрузится на GPU (в логах `device=cuda`).
+
+Файлы: [`requirements.txt`](requirements.txt), [`requirements-ml.txt`](requirements-ml.txt), [`requirements-full.txt`](requirements-full.txt).
+
+### Docker (контейнер `api`)
+
+Build-args в [`beckend/Dockerfile`](beckend/Dockerfile):
+
+| Аргумент | По умолчанию | Смысл |
+|----------|--------------|--------|
+| `WITH_ML` | `0` | `1` — **torch только CPU** с `whl/cpu`, затем [`requirements-ml.txt`](requirements-ml.txt) (без пакетов NVIDIA; GPU — только `docker-compose.gpu.yml`) |
+| `ENABLE_CUDA_TORCH` | `0` | только при `WITH_ML=1`: заменить torch на сборку **cu124** |
+
+- **Обычный запуск** (`docker compose up --build`): образ **api** **без** torch/transformers — быстрая сборка. Эндпоинты с эмбеддингами и `rebuild_ste_index` вернут понятную ошибку, пока не пересоберёте с ML.
+- **Семантика на CPU в Docker:** [`docker-compose.ml.yml`](docker-compose.ml.yml) — `WITH_ML=1`:
+
+  ```bash
+  docker compose -f docker-compose.yml -f docker-compose.ml.yml up --build -d
+  ```
+
+- **NVIDIA GPU:**
+  1. Драйвер NVIDIA и **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**. На Windows: **Docker Desktop** + **WSL2** с GPU.
+  2. [`docker-compose.gpu.yml`](docker-compose.gpu.yml): `WITH_ML=1`, `ENABLE_CUDA_TORCH=1`, `NVIDIA_VISIBLE_DEVICES=all`, резервирование GPU.
+
+     ```bash
+     docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build -d
+     ```
+
+- Вручную: `docker compose build --build-arg WITH_ML=1 api` (CPU torch) или добавьте `--build-arg ENABLE_CUDA_TORCH=1` вместе с `WITH_ML=1`.
+- Подробный лог сборки: `docker compose build --progress=plain api`
+
+### Полезные переменные (см. также [.env.example](.env.example))
+
+| Переменная | Назначение |
+|------------|------------|
+| `STE_EMBEDDING_DEVICE` | `auto` / `cuda` / `mps` / `cpu` (нужен образ с ML) |
+| `STE_EMBEDDING_MODEL` | Имя модели sentence-transformers |
+| `WITH_ML` / `ENABLE_CUDA_TORCH` | Только **build-arg** в Dockerfile; в compose — [`docker-compose.ml.yml`](docker-compose.ml.yml) и [`docker-compose.gpu.yml`](docker-compose.gpu.yml) |
 
 ---
 
@@ -129,10 +204,23 @@ python -m etl.validate_dataset
 
 Переменные `DATA_DIR`, `MANIFEST_PATH`, `ETL_STE_LIMIT`, `ETL_CONTRACT_LIMIT` — как у ETL (см. [ml/dock/architecture.md](ml/dock/architecture.md)).
 
+## Сборка Docker: `EOF` / `rpc error ... Unavailable`
+
+Сообщение вроде `target api: failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF` чаще всего означает не баг приложения, а **обрыв связи с Docker** или **нехватку ресурсов** на шаге долгого `pip install`. Базовый образ **api** без ML лёгкий; тяжёлая сборка — при **`WITH_ML=1`** (torch, sentence-transformers).
+
+Что сделать:
+
+1. **Уменьшить контекст сборки** — в корне репозитория есть [`.dockerignore`](.dockerignore): каталог **`data/`** с большими CSV **не должен** попадать в context образа `api` (раньше это могло грузить гигабайты на каждый `docker compose build` и приводить к таймауту/EOF). Пересоберите: `docker compose build api`.
+2. **Docker Desktop → Settings → Resources**: увеличьте **Memory** (например 8–12 GB), **Disk** при необходимости; перезапустите Docker.
+3. Соберите только **api** отдельно: `docker compose build api`, затем остальное — `docker compose build`.
+4. Повторите сборку после `wsl --shutdown` (если backend WSL2) и перезапуска Docker Desktop.
+5. Если падение стабильно на одном слое — временно отключите BuildKit: `set DOCKER_BUILDKIT=0` и снова `docker compose build`.
+6. Сборка **с ML** (`docker-compose.ml.yml` / `docker-compose.gpu.yml`) долго молчит — часто качается torch; используйте `docker compose build --progress=plain api`.
+
 ## Полезные команды
 
 - Остановка: `docker compose down`
-- Логи app: `docker compose logs -f app`
+- Логи API: `docker compose logs -f api`
 - Повторная индексация СТЕ в ES (если API уже запущен): `POST /indexing/reindex` (см. [Swagger UI](http://localhost:3000/schema/swagger-ui/)).
 
 ## Переменные окружения

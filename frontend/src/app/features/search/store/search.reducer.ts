@@ -1,4 +1,4 @@
-﻿import { createReducer, on } from '@ngrx/store';
+import { createReducer, on } from '@ngrx/store';
 
 import { SearchResponse, SearchSuggestion } from '../../../shared/models/search.models';
 import { SearchActions } from './search.actions';
@@ -19,7 +19,11 @@ export const initialSearchState: SearchState = {
 
 export const searchReducer = createReducer(
   initialSearchState,
-  on(SearchActions.suggestionsRequested, SearchActions.searchRequested, (state) => ({
+  on(SearchActions.suggestionsRequested, (state) => ({
+    ...state,
+    error: null,
+  })),
+  on(SearchActions.searchRequested, (state) => ({
     ...state,
     loading: true,
     error: null,
@@ -27,12 +31,11 @@ export const searchReducer = createReducer(
   on(SearchActions.suggestionsLoaded, (state, { suggestions }) => ({
     ...state,
     suggestions,
-    loading: false,
+    error: null,
   })),
   on(SearchActions.searchLoaded, (state, { response }) => ({
     ...state,
     response,
-    suggestions: [],
     loading: false,
   })),
   on(SearchActions.failureReceived, (state, { message }) => ({

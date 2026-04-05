@@ -1,12 +1,11 @@
-﻿<ul class="suggestions">
-  @for (item of suggestions(); track item.text) {
-    <li>
-      <button type="button" (click)="selectSuggestion(item.text)">
-        <strong>{{ item.text }}</strong>
-        <span>{{ item.kind }}</span>
-      </button>
-    </li>
-  } @empty {
-    <li class="is-empty">Suggestions will appear here.</li>
-  }
-</ul>
+﻿@if (suggestions().length > 0) {
+  <ul class="suggestions-panel" role="listbox" aria-label="Подсказки поиска">
+    @for (item of suggestions(); track item.kind + ':' + item.text) {
+      <li role="option">
+        <button type="button" (click)="selectSuggestion(item.text)">
+          <span class="suggestion-text">{{ item.text }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+}

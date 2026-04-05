@@ -1,10 +1,10 @@
 # Environment
 .env
+.env.local
+.env.*.local
+!.env.example
 
-# Backend
-backend/node_modules/
-backend/dist/
-backend/coverage/
+# В репозитории каталог называется beckend/ (Python); node_modules там не используется.
 
 # Frontend
 frontend/node_modules/
@@ -29,6 +29,11 @@ Thumbs.db
 data/*.csv
 !data/.gitkeep
 
+# Elasticsearch: распакованный репозиторий снимков и архив в data/
+data/elasticsearch-snapshot-repo/
+data/ste_search_es_snapshot.zip
+data/.ste_search_es_restore_done
+
 # Python (корневой venv)
 venv/
 .venv/
@@ -46,3 +51,4 @@ db.sqlite3
 
 # IDE
 .idea/
+.claude/

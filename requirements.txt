@@ -12,3 +12,9 @@ drf-spectacular>=0.27,<0.29
 django-cors-headers>=4.3,<5
 gunicorn>=22,<24
 python-dotenv>=1.0,<2
+#
+# --- Поиск СТЕ (Elasticsearch; эмбеддинги — отдельно requirements-ml.txt) ---
+django-elasticsearch-dsl>=8.0,<9
+elasticsearch>=8.12,<9
+numpy>=1.26,<3
+pymorphy3>=2.0,<3

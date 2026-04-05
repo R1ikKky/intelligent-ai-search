@@ -1,7 +1,18 @@
 ﻿import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { EMPTY, catchError, map, of, switchMap } from 'rxjs';
+import {
+  EMPTY,
+  catchError,
+  concatMap,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  of,
+  retry,
+  switchMap,
+  timer,
+} from 'rxjs';
 
 import { SearchApi } from '../data-access/search.api';
 import { TelemetryApi } from '../data-access/telemetry.api';
@@ -12,12 +23,18 @@ export class SearchEffects {
   readonly suggestions$ = createEffect(() =>
     this.actions$.pipe(
       ofType(SearchActions.suggestionsRequested),
-      switchMap(({ query }) =>
-        this.searchApi.suggest(query).pipe(
+      distinctUntilChanged((a, b) => a.query === b.query),
+      debounceTime(280),
+      switchMap(({ query }) => {
+        const trimmed = query.trim();
+        if (!trimmed) {
+          return of(SearchActions.suggestionsLoaded({ suggestions: [] }));
+        }
+        return this.searchApi.suggest(query).pipe(
           map((suggestions) => SearchActions.suggestionsLoaded({ suggestions })),
-          catchError((error) => of(SearchActions.failureReceived({ message: this.resolveErrorMessage(error, 'Не удалось загрузить подсказки.') }))),
-        ),
-      ),
+          catchError(() => of(SearchActions.suggestionsLoaded({ suggestions: [] }))),
+        );
+      }),
     ),
   );
 
@@ -37,7 +54,12 @@ export class SearchEffects {
     () =>
       this.actions$.pipe(
         ofType(SearchActions.telemetryFlushRequested),
-        switchMap(({ payload }) => this.telemetryApi.flush(payload).pipe(catchError(() => EMPTY))),
+        concatMap(({ payload }) =>
+          this.telemetryApi.flush(payload).pipe(
+            retry({ count: 2, delay: () => timer(500) }),
+            catchError(() => EMPTY),
+          ),
+        ),
       ),
     { dispatch: false },
   );

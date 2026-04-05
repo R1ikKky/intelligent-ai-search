@@ -1,0 +1,27 @@
+<div class="ste-page">
+  <a routerLink="/search" class="ste-page__back">← Назад к поиску</a>
+
+  @if (loading()) {
+    <p class="ste-page__meta">Загрузка…</p>
+  } @else if (error(); as err) {
+    <p class="ste-page__error">{{ err }}</p>
+  } @else if (detail(); as d) {
+    <article class="ste-card ste-page__card">
+      <div class="ste-card__content">
+        <span class="ste-card__badge">{{ d.category || 'СТЕ' }}</span>
+        <h1 class="ste-page__title ste-card__title">{{ d.name }}</h1>
+        @if (d.attributes?.trim()) {
+          <p class="ste-page__attrs">{{ d.attributes }}</p>
+        }
+        <div class="ste-card__product-meta ste-page__meta-row">
+          <span class="ste-card__id-wrap"
+            >ID СТЕ <span class="ste-card__id-code">{{ d.steId }}</span></span
+          >
+          @if (d.supplierName) {
+            <span class="ste-card__mfr" [title]="d.supplierName">{{ d.supplierName }}</span>
+          }
+        </div>
+      </div>
+    </article>
+  }
+</div>

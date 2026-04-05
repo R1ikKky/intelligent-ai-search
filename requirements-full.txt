@@ -1,0 +1,4 @@
+# Перед этим на Linux установите CPU torch, иначе sentence-transformers подтянет CUDA с PyPI:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+-r requirements.txt
+-r requirements-ml.txt

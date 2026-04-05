@@ -3,29 +3,12 @@
   gap: 24px;
 }
 
-.search-page__toolbar {
-  width: 100%;
+.search-page__query-zone {
+  position: relative;
+  z-index: 20;
+  max-width: 100%;
 }
 
-.search-page__grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-.search-page__error {
-  color: #d0272d;
-  font-size: 13px;
-  padding: 10px 14px;
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  border-radius: 4px;
-  margin: 0;
-}
-
-@media (max-width: 960px) {
-  .search-page__grid {
-    grid-template-columns: 1fr;
-  }
+.search-page__results {
+  min-width: 0;
 }

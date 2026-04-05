@@ -18,6 +18,27 @@ export interface SearchResultItem {
   readonly isPersonalized: boolean;
 }
 
+export interface SteCardManufacturer {
+  readonly inn: string;
+  readonly name: string;
+}
+
+export interface SteCardItem {
+  readonly steId: string;
+  readonly name: string;
+  readonly category: string;
+  readonly attributes: string;
+  readonly score: number;
+  readonly scoreNorm: number;
+  readonly personalizationMult?: number;
+}
+
+export interface SteCard {
+  readonly manufacturer: SteCardManufacturer | null;
+  readonly confidence: number;
+  readonly items: readonly SteCardItem[];
+}
+
 export interface SearchResponse {
   readonly queryId: string;
   readonly originalQuery: string;
@@ -26,6 +47,8 @@ export interface SearchResponse {
   readonly corrections: readonly SearchSuggestion[];
   readonly recommendations: readonly SearchSuggestion[];
   readonly items: readonly SearchResultItem[];
+  /** Группы СТЕ по производителю / смысловой близости (бэкенд GET /products/search). */
+  readonly cards?: readonly SteCard[];
   readonly total: number;
   readonly page: number;
   readonly limit: number;

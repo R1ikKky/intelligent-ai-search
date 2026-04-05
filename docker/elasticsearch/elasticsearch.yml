@@ -1,0 +1,7 @@
+# Конфиг для образа elasticsearch:8.12.2 (docker-compose).
+# path.repo нужен для снимков на диск — см. docks/elasticsearch-sharing.md
+cluster.name: docker-cluster
+network.host: 0.0.0.0
+discovery.type: single-node
+xpack.security.enabled: false
+path.repo: ["/usr/share/elasticsearch/snapshots"]
