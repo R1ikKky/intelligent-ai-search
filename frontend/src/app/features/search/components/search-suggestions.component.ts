@@ -11,9 +11,15 @@ import { SearchSuggestion } from '../../../shared/models/search.models';
 })
 export class SearchSuggestionsComponent {
   readonly suggestions = input<readonly SearchSuggestion[]>([]);
+  readonly dismissed = input(false);
   readonly suggestionSelected = output<string>();
+  readonly hideRequested = output<void>();
 
   selectSuggestion(text: string): void {
     this.suggestionSelected.emit(text);
+  }
+
+  hide(): void {
+    this.hideRequested.emit();
   }
 }

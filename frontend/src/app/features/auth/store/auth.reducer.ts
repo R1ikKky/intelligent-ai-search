@@ -21,9 +21,19 @@ export const initialAuthState: AuthState = {
 
 export const authReducer = createReducer(
   initialAuthState,
-  on(AuthActions.registerRequested, AuthActions.loginRequested, AuthActions.refreshRequested, (state) => ({
+  on(
+    AuthActions.registerRequested,
+    AuthActions.loginRequested,
+    AuthActions.refreshRequested,
+    AuthActions.customerRegionUpdateRequested,
+    (state) => ({
+      ...state,
+      loading: true,
+      error: null,
+    }),
+  ),
+  on(AuthActions.loadProfileRequested, (state) => ({
     ...state,
-    loading: true,
     error: null,
   })),
   on(AuthActions.authSucceeded, (state, { response }) => ({
@@ -45,6 +55,8 @@ export const authReducer = createReducer(
   on(AuthActions.profileLoaded, (state, { profile }) => ({
     ...state,
     profile,
+    loading: false,
+    error: null,
   })),
   on(AuthActions.authFailed, (state, { message }) => ({
     ...state,

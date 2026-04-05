@@ -41,11 +41,16 @@
         Корзина
       </button>
 
-      <button class="pp-nav__item" type="button">
+      <button
+        class="pp-nav__item pp-nav__item--region"
+        type="button"
+        (click)="openRegionDialog()"
+        [class.is-active]="isRegionDialogOpen()"
+      >
         <svg class="pp-nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M10 2l8 16-8-4-8 4 8-16z" stroke-linejoin="round"/>
         </svg>
-        Московская область
+        <span class="pp-nav__region-label">{{ regionLabel() }}</span>
       </button>
     </nav>
 
@@ -105,6 +110,15 @@
 <main class="pp-content">
   <router-outlet />
 </main>
+
+<app-region-picker-dialog
+  [open]="isRegionDialogOpen()"
+  [currentRegion]="customerRegion()"
+  [loading]="authLoading()"
+  [error]="authError()"
+  (closeRequested)="closeRegionDialog()"
+  (confirmRequested)="saveRegion($event)"
+/>
 
 <footer class="pp-footer">
   <div class="pp-footer__inner">

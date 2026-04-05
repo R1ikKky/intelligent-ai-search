@@ -12,3 +12,13 @@
 .search-page__results {
   min-width: 0;
 }
+
+.search-page__results-anchor {
+  height: 0;
+}
+
+.search-page__pagination {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 24px;
+}

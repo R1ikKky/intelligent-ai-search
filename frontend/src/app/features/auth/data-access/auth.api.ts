@@ -22,6 +22,12 @@ interface BackendAuthResponse {
   readonly login: string;
 }
 
+interface BackendCustomerRow {
+  readonly customerInn: string;
+  readonly customerName: string;
+  readonly customerRegion: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthApi {
   constructor(private readonly http: HttpClient) {}
@@ -52,6 +58,14 @@ export class AuthApi {
 
   me(): Observable<UserProfile> {
     return this.http.get<UserProfile>('/auth/me', { withCredentials: true });
+  }
+
+  updateMyRegion(region: string): Observable<BackendCustomerRow> {
+    return this.http.patch<BackendCustomerRow>(
+      '/customers/me/region',
+      { location: region },
+      { withCredentials: true },
+    );
   }
 
   private mapRegisterPayload(payload: RegisterRequest): BackendRegisterRequest {

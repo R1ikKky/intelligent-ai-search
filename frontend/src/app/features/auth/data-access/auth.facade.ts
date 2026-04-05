@@ -28,6 +28,14 @@ export class AuthFacade {
     this.store.dispatch(AuthActions.refreshRequested());
   }
 
+  loadProfile(): void {
+    this.store.dispatch(AuthActions.loadProfileRequested());
+  }
+
+  updateCustomerRegion(region: string): void {
+    this.store.dispatch(AuthActions.customerRegionUpdateRequested({ region }));
+  }
+
   logout(): void {
     this.store.dispatch(AuthActions.logoutRequested());
   }

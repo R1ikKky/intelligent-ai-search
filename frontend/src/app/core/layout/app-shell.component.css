@@ -111,11 +111,26 @@
   color: #111;
 }
 
+.pp-nav__item.is-active {
+  background: #f1f4f8;
+  color: #d0272d;
+}
+
 .pp-nav__icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
   color: #555;
+}
+
+.pp-nav__item--region {
+  max-width: 220px;
+}
+
+.pp-nav__region-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Search bar (expanded inline) ── */

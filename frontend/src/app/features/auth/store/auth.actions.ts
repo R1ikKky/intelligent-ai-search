@@ -7,6 +7,8 @@ export const AuthActions = createActionGroup({
   events: {
     'Register Requested': props<{ payload: RegisterRequest }>(),
     'Login Requested': props<{ payload: LoginRequest }>(),
+    'Load Profile Requested': emptyProps(),
+    'Customer Region Update Requested': props<{ region: string }>(),
     'Auth Succeeded': props<{ response: AuthResponse }>(),
     'Access Token Refreshed': props<{ accessToken: string }>(),
     'Auth Failed': props<{ message: string }>(),

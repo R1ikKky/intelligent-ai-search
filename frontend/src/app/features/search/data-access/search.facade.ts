@@ -18,8 +18,8 @@ export class SearchFacade {
     this.store.dispatch(SearchActions.suggestionsRequested({ query }));
   }
 
-  search(query: string): void {
-    this.store.dispatch(SearchActions.searchRequested({ query }));
+  search(query: string, page = 1): void {
+    this.store.dispatch(SearchActions.searchRequested({ query, page }));
   }
 
   flushTelemetry(payload: TelemetryBatchRequest): void {

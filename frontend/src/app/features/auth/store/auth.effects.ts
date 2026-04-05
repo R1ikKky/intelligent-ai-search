@@ -98,11 +98,30 @@ export class AuthEffects {
 
   readonly fetchProfile$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.authSucceeded, AuthActions.accessTokenRefreshed),
+      ofType(AuthActions.authSucceeded, AuthActions.accessTokenRefreshed, AuthActions.loadProfileRequested),
       switchMap(() =>
         this.authApi.me().pipe(
           map((profile) => AuthActions.profileLoaded({ profile })),
           catchError(() => EMPTY),
+        ),
+      ),
+    ),
+  );
+
+  readonly updateCustomerRegion$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.customerRegionUpdateRequested),
+      switchMap(({ region }) =>
+        this.authApi.updateMyRegion(region).pipe(
+          switchMap(() =>
+            this.authApi.me().pipe(
+              map((profile) => AuthActions.profileLoaded({ profile })),
+              catchError((error) =>
+                of(AuthActions.authFailed({ message: this.resolveErrorMessage(error, 'Не удалось обновить профиль после смены региона.') })),
+              ),
+            ),
+          ),
+          catchError((error) => of(AuthActions.authFailed({ message: this.resolveErrorMessage(error, 'Не удалось обновить регион.') }))),
         ),
       ),
     ),
@@ -113,7 +132,7 @@ export class AuthEffects {
       this.actions$.pipe(
         ofType(AuthActions.logoutCompleted),
         tap(() => {
-          void this.router.navigate(['/auth/login']);
+          void this.router.navigate(['/login']);
         }),
       ),
     { dispatch: false },
