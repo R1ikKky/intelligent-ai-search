@@ -1,5 +1,6 @@
 # Copy .env.example to .env to override secrets.
-# Данные контейнеров по умолчанию на диске D: (bind mount). Переопределение: DOCKER_VOLUME_ROOT в .env
+# Тома по умолчанию: ./.docker-volumes (относительно репозитория) — так Docker на Windows не путает «D:» с разделителем тома.
+# Свой путь: DOCKER_VOLUME_ROOT в .env. На Windows для диска D: используйте //d/docker-data/... (см. .env.example).
 
 services:
   postgres:
@@ -61,7 +62,7 @@ services:
       elasticsearch-snapshot-unpack:
         condition: service_completed_successfully
     volumes:
-      - ${DOCKER_VOLUME_ROOT:-D:/docker-data/intelligent-ai-search}/elasticsearch:/usr/share/elasticsearch/data
+      - ${DOCKER_VOLUME_ROOT:-./.docker-volumes}/elasticsearch:/usr/share/elasticsearch/data
       - ./docker/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       # Файловый репозиторий снимков (zip кладите в data/ — см. docks/elasticsearch-sharing.md)
       - ./data/elasticsearch-snapshot-repo:/usr/share/elasticsearch/snapshots

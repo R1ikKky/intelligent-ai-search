@@ -29,6 +29,9 @@ Thumbs.db
 data/*.csv
 !data/.gitkeep
 
+# Локальные тома Docker Compose (postgres, elasticsearch)
+.docker-volumes/
+
 # Elasticsearch: распакованный репозиторий снимков и архив в data/
 data/elasticsearch-snapshot-repo/
 data/ste_search_es_snapshot.zip

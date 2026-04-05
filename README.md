@@ -12,7 +12,7 @@ docker compose up --build -d
 
 - Установлены **Docker** и **Docker Compose** v2, запущен Docker Engine (на Windows — **Docker Desktop**).
 - Свободны порты **5432** (Postgres), **9200** (Elasticsearch) и **4200** (веб-фронт в nginx).
-- По желанию: скопируйте `.env.example` в `.env`, чтобы задать `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` и при необходимости **`DOCKER_VOLUME_ROOT`** (по умолчанию том Postgres: `D:/docker-data/intelligent-ai-search/postgres`).
+- По желанию: скопируйте `.env.example` в `.env`, чтобы задать `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` и при необходимости **`DOCKER_VOLUME_ROOT`**. По умолчанию данные Postgres и Elasticsearch лежат в **`./.docker-volumes`** в корне репозитория (так Docker на Windows не ломает путь из‑за буквы диска `D:`).
 - **Импорт датасета в Postgres:** в папку **`data/`** положите оба файла **`Контракты_20260403.csv`** и **`СТЕ_20260403.csv`** (разделитель `;`, кодировка UTF-8 с BOM, без строки заголовка — см. [docks/datasets.manifest.json](docks/datasets.manifest.json)). После того как контейнер **postgres** станет healthy, один раз отработает **dataset-loader**. Если CSV нет — в логах будет предупреждение, контейнер завершится с кодом 0, **postgres** и **frontend** продолжают работать без заливки таблиц из этих файлов.
 - Повторить только загрузку в уже поднятую БД: `docker compose up -d postgres`, затем `docker compose run --rm dataset-loader`.
 - **Поиск СТЕ:** сервис **api** ждёт готовый Elasticsearch. Базовый образ **api** собирается **без** PyTorch / sentence-transformers (быстрая сборка). Чтобы индексировать с эмбеддингами, поднимите стек с ML — например  
@@ -115,11 +115,13 @@ Build-args в [`beckend/Dockerfile`](beckend/Dockerfile):
 
    В продакшене задайте надёжные `JWT_ACCESS_SECRET` и `JWT_REFRESH_SECRET` (длинные случайные строки).
 
-2. (Опционально) Папки данных контейнеров по умолчанию монтируются на **`D:/docker-data/intelligent-ai-search`**. Чтобы использовать другой путь:
+2. (Опционально) По умолчанию тома — **`./.docker-volumes`** рядом с репозиторием. Свой каталог:
 
    ```env
-   DOCKER_VOLUME_ROOT=C:/path/to/docker-data/intelligent-ai-search
+   DOCKER_VOLUME_ROOT=/absolute/path/to/docker-data/intelligent-ai-search
    ```
+
+   **Windows:** не задавайте `D:/...` — в строке тома двоеточие после буквы диска ломает разбор. Используйте формат **`//d/docker-data/intelligent-ai-search`** (эквивалент `D:\docker-data\...`) или оставьте относительный путь по умолчанию.
 
 3. Положите в **`ml/data/`** файлы **`СТЕ_20260403.csv`** и **`Контракты_20260403.csv`** (как в [datasets.manifest.json](datasets.manifest.json)). Без них ETL с `ETL_SKIP=0` завершится с ошибкой.
 
